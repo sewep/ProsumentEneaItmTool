@@ -1,0 +1,95 @@
+﻿<Window x:Class="ProsumentEneaItmTool.UI.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:ProsumentEneaItmTool.UI" xmlns:customcontrols="clr-namespace:ProsumentEneaItmTool.UI.CustomControls"
+        d:DataContext="{d:DesignInstance Type=local:MainWindowVM}"
+        mc:Ignorable="d"
+        Title="Prosument Enea Itm Tool"
+        Height="450" Width="800">
+    <Window.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolToVis"/>
+    </Window.Resources>
+    <DockPanel>
+        <ScrollViewer DockPanel.Dock="Right" VerticalScrollBarVisibility="Auto">
+            <StackPanel x:Name="RootStackPanel">
+                <Button Content="Load from csv" Command="{Binding LoadFromFile}" Margin="0,4"/>
+                <TextBlock Text="Importowane dane zostaną dołączone do już istniejących lub zostaną zaktualizowane."
+                           TextWrapping="Wrap"
+                           HorizontalAlignment="Stretch"
+                           FontSize="9"
+                           Foreground="Gray"
+                           Width="{Binding Path=ActualWidth, ElementName=RootStackPanel}"/>
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="1*"/>
+                        <ColumnDefinition Width="1*"/>
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="auto"/>
+                        <RowDefinition Height="auto"/>
+                    </Grid.RowDefinitions>
+                    <Label Grid.Column="0" Content="Od"/>
+                    <Label Grid.Column="1" Content="Do"/>
+                    <DatePicker Grid.Row="1" Grid.Column="0" SelectedDate="{Binding DateFrom}"/>
+                    <DatePicker Grid.Row="1" Grid.Column="1" SelectedDate="{Binding DateTo}"/>
+                </Grid>
+
+                <Button Content="Ustaw cały wprowadzony okres" Margin="0,3,0,0" Command="{Binding SetEntireEnteredTimePeriod}"/>
+                
+                <Grid Background="LightGoldenrodYellow" Margin="0,15,0,0">
+                    <Grid.Resources>
+                        <Style TargetType="Label">
+                            <Setter Property="HorizontalContentAlignment" Value="Center"/>
+                        </Style>
+                        <Style TargetType="Label" x:Key="DigitalValue">
+                            <Setter Property="HorizontalContentAlignment" Value="Right"/>
+                            <Setter Property="FontWeight" Value="Bold"/>
+                            <Setter Property="ContentStringFormat" Value="N0"/>
+                        </Style>
+                    </Grid.Resources>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="auto"/>
+                        <ColumnDefinition Width="80"/>
+                        <ColumnDefinition Width="80"/>
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="auto"/>
+                        <RowDefinition Height="auto"/>
+                        <RowDefinition Height="auto"/>
+                        <RowDefinition Height="auto"/>
+                        <RowDefinition Height="auto"/>
+                    </Grid.RowDefinitions>
+
+                    <Label Content="[kWh]"/>
+                    <Label Grid.Column="1" Content="Przed bil."/>
+                    <Label Grid.Column="2" Content="Po bil."/>
+                    <Label Grid.Row="1" Content="Wysłana"/>
+                    <Label Grid.Row="2" Content="Pobrana"/>
+                    <Label Grid.Row="3" Content="Różnica"/>
+                    <Label Grid.Row="4" Content="Opust -20%"/>
+
+                    <Label Grid.Column="1" Grid.Row="1" Content="{Binding TotalFedBB, FallbackValue=000}" Style="{StaticResource DigitalValue}" Foreground="Green"/>
+                    <Label Grid.Column="2" Grid.Row="1" Content="{Binding TotalFedAB, FallbackValue=000}" Style="{StaticResource DigitalValue}" Foreground="Green"/>
+                    <Label Grid.Column="1" Grid.Row="2" Content="{Binding TotalConsumingBB, FallbackValue=000}" Style="{StaticResource DigitalValue}" Foreground="Red"/>
+                    <Label Grid.Column="2" Grid.Row="2" Content="{Binding TotalConsumingAB, FallbackValue=000}" Style="{StaticResource DigitalValue}" Foreground="Red"/>
+                    <Label Grid.Column="1" Grid.Row="3" Content="{Binding DiffBB, FallbackValue=000}" Style="{StaticResource DigitalValue}" Foreground="Blue"/>
+                    <Label Grid.Column="2" Grid.Row="3" Content="{Binding DiffAB, FallbackValue=000}" Style="{StaticResource DigitalValue}" Foreground="Blue"/>
+                    <Label Grid.Column="1" Grid.Row="4" Content="{Binding DiffBBNetto, FallbackValue=000}" Style="{StaticResource DigitalValue}" Foreground="Purple"/>
+                    <Label Grid.Column="2" Grid.Row="4" Content="{Binding DiffABNetto, FallbackValue=000}" Style="{StaticResource DigitalValue}" Foreground="Purple"/>
+                </Grid>
+            </StackPanel>
+        </ScrollViewer>
+
+        <Grid>
+            <local:Charts Records="{Binding Records}"/>
+            <Border Background="#66222222" Visibility="{Binding IsBusy, Converter={StaticResource BoolToVis}}">
+                <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                    <Label Content="Ładowanie" Visibility="Collapsed"/>
+                    <customcontrols:LoadingSpinner Width="50" Height="50"/>
+                </StackPanel>
+            </Border>
+        </Grid>
+    </DockPanel>
+</Window>

@@ -1,0 +1,36 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.10.35013.160
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ProsumentEneaItmTool", "ProsumentEneaItmTool\ProsumentEneaItmTool.csproj", "{DCF3DF85-7523-4510-9761-4317CBA4F419}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ProsumentEneaItmTool.Tests", "ProsumentEneaItmTool.Tests\ProsumentEneaItmTool.Tests.csproj", "{57A23977-BC02-4F5A-8C39-E0F080B0B85C}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{38C9FAB7-464F-41CA-86D6-6786D5CF353E}"
+	ProjectSection(SolutionItems) = preProject
+		nuget.config = nuget.config
+	EndProjectSection
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{DCF3DF85-7523-4510-9761-4317CBA4F419}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{DCF3DF85-7523-4510-9761-4317CBA4F419}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{DCF3DF85-7523-4510-9761-4317CBA4F419}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{DCF3DF85-7523-4510-9761-4317CBA4F419}.Release|Any CPU.Build.0 = Release|Any CPU
+		{57A23977-BC02-4F5A-8C39-E0F080B0B85C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{57A23977-BC02-4F5A-8C39-E0F080B0B85C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{57A23977-BC02-4F5A-8C39-E0F080B0B85C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{57A23977-BC02-4F5A-8C39-E0F080B0B85C}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {610F9C96-4DC3-4B7E-932F-C7A70CC4AA07}
+	EndGlobalSection
+EndGlobal
