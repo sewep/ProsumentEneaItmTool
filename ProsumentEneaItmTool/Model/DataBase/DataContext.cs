@@ -18,7 +18,5 @@ namespace ProsumentEneaItmTool.Model.DataBase
         }
 
         public DbSet<ImportFileRecord> ImportedRecords => Set<ImportFileRecord>();
-
-
     }
 }

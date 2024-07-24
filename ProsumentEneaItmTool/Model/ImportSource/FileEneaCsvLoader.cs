@@ -17,7 +17,6 @@ namespace ProsumentEneaItmTool.Model.ImportSource
         {
             OpenFileDialog openFileDialog = new()
             {
-                //openFileDialog.InitialDirectory = "c:\\";
                 Filter = "Excel csv (*.csv)|*.csv|All files (*.*)|*.*",
                 FilterIndex = 1,
                 RestoreDirectory = true
@@ -26,8 +25,7 @@ namespace ProsumentEneaItmTool.Model.ImportSource
 
             if (openFileDialog.ShowDialog() == true)
             {
-                string filePath = openFileDialog.FileName;
-                var fileContent = _fileSystem.File.ReadAllText(filePath);
+                var fileContent = _fileSystem.File.ReadAllText(openFileDialog.FileName);
 
                 return EneaCsvFileParser.Parse(fileContent);
             }

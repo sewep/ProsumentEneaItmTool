@@ -12,8 +12,7 @@ namespace ProsumentEneaItmTool.UI
     /// </summary>
     public partial class Charts : UserControl
     {
-        Scatter MyScatter;
-        Crosshair MyCrosshair;
+        private Crosshair? _myCrosshair;
 
         public List<ImportFileRecord> Records
         {
@@ -100,10 +99,10 @@ namespace ProsumentEneaItmTool.UI
             plot.Axes.DateTimeTicksBottom();
             plot.ShowLegend(Alignment.UpperLeft);
 
-            MyCrosshair = plot.Add.Crosshair(0, 0);
-            MyCrosshair.IsVisible = false;
-            MyCrosshair.MarkerShape = MarkerShape.OpenCircle;
-            MyCrosshair.MarkerSize = 15;
+            _myCrosshair = plot.Add.Crosshair(0, 0);
+            _myCrosshair.IsVisible = false;
+            _myCrosshair.MarkerShape = MarkerShape.OpenCircle;
+            _myCrosshair.MarkerSize = 15;
 
             WpfPlot.MouseMove += (s, e) =>
             {
@@ -124,8 +123,8 @@ namespace ProsumentEneaItmTool.UI
                 DataPoint takenABscNearest = takenABsc.Data.GetNearest(mouseLocation, plot.LastRender);
                 if (takenABscNearest.IsReal)
                 {
-                    MyCrosshair.IsVisible = true;
-                    MyCrosshair.Position = takenABscNearest.Coordinates;
+                    _myCrosshair.IsVisible = true;
+                    _myCrosshair.Position = takenABscNearest.Coordinates;
                     WpfPlot.Refresh();
                     PoinyInfo.Content = $"{DateTime.FromOADate(takenABscNearest.X):yyyy.MM.dd}, Wolumin pobranej mocy = {takenABscNearest.Y:0.#} kWh";
                     showCross = true;
@@ -134,8 +133,8 @@ namespace ProsumentEneaItmTool.UI
                 DataPoint fedABscNearest = fedABsc.Data.GetNearest(mouseLocation, plot.LastRender);
                 if (fedABscNearest.IsReal)
                 {
-                    MyCrosshair.IsVisible = true;
-                    MyCrosshair.Position = fedABscNearest.Coordinates;
+                    _myCrosshair.IsVisible = true;
+                    _myCrosshair.Position = fedABscNearest.Coordinates;
                     WpfPlot.Refresh();
                     PoinyInfo.Content = $"{DateTime.FromOADate(fedABscNearest.X):yyyy.MM.dd}, Wolumin wysłanej mocy = {fedABscNearest.Y:0.#} kWh";
                     showCross = true;
@@ -144,8 +143,8 @@ namespace ProsumentEneaItmTool.UI
                 DataPoint diffABscNearest = diffABsc.Data.GetNearest(mouseLocation, plot.LastRender);
                 if (diffABscNearest.IsReal)
                 {
-                    MyCrosshair.IsVisible = true;
-                    MyCrosshair.Position = diffABscNearest.Coordinates;
+                    _myCrosshair.IsVisible = true;
+                    _myCrosshair.Position = diffABscNearest.Coordinates;
                     WpfPlot.Refresh();
                     PoinyInfo.Content = $"{DateTime.FromOADate(diffABscNearest.X):yyyy.MM.dd}, Różnica mocy jeden do jeden = {diffABscNearest.Y:0.#} kWh";
                     showCross = true;
@@ -154,16 +153,16 @@ namespace ProsumentEneaItmTool.UI
                 DataPoint diffABnscNearest = diffABnsc.Data.GetNearest(mouseLocation, plot.LastRender);
                 if (diffABnscNearest.IsReal)
                 {
-                    MyCrosshair.IsVisible = true;
-                    MyCrosshair.Position = diffABnscNearest.Coordinates;
+                    _myCrosshair.IsVisible = true;
+                    _myCrosshair.Position = diffABnscNearest.Coordinates;
                     WpfPlot.Refresh();
                     PoinyInfo.Content = $"{DateTime.FromOADate(diffABnscNearest.X):yyyy.MM.dd}, Moc do wykorzystania = {diffABnscNearest.Y:0.#} kWh";
                     showCross = true;
                 }
 
-                if (!showCross && MyCrosshair.IsVisible)
+                if (!showCross && _myCrosshair.IsVisible)
                 {
-                    MyCrosshair.IsVisible = false;
+                    _myCrosshair.IsVisible = false;
                     WpfPlot.Refresh();
                     PoinyInfo.Content = $"";
                 }

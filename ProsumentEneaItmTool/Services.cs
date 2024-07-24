@@ -10,12 +10,12 @@ namespace ProsumentEneaItmTool
     {
         public static ServiceCollection SetAppModules(this ServiceCollection services)
         {
-            services.AddSingleton<IFileSystem>((s) => new FileSystem());
             services.AddTransient<MainWindowVM>();
             services.AddTransient(s => new MainWindow() { DataContext = s.GetService<MainWindowVM>() });
 
             services.AddDbContext<DataContext>();
 
+            services.AddSingleton<IFileSystem>((s) => new FileSystem());
             services.AddTransient<IFileEneaCsvLoader, FileEneaCsvLoader>();
 
             return services;

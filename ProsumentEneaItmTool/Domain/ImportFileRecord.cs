@@ -8,9 +8,7 @@ namespace ProsumentEneaItmTool.Domain
     {
         [Key]
         public int Id { get; set; }
-
         public DateTime Date { get; set; }
-
         public double TakenVolumeBeforeBanancing { get; set; }
         public double FedVolumeBeforeBanancing { get; set; }
         public double TakenVolumeAfterBanancing { get; set; }
