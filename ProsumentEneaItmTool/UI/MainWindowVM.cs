@@ -76,6 +76,17 @@ namespace ProsumentEneaItmTool.UI
 
         public CalculationEnergyResults CalculationEnergyResults => _powerCalculation.CalculationEnergyResults;
 
+        public double FreeEnergyCoefficient
+        {
+            get => _powerCalculation.FreeEnergyCoefficient;
+            set
+            {
+                _powerCalculation.FreeEnergyCoefficient = value;
+                OnPropertyChanged();
+                _ = UseSelectedRangeAsync();
+            }
+        }
+
         public IPowerCalculation PowerCalculation => _powerCalculation;
 
         public List<ImportFileRecord> Records
