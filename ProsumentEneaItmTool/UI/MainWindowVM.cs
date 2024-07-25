@@ -101,6 +101,17 @@ namespace ProsumentEneaItmTool.UI
             await SelectFullDateRangesAsync();
         });
 
+        public ICommand ClearAllData => new RelayCommand(async (o) =>
+        {
+            IsBusy = true;
+            await Task.Run(async () =>
+            {
+                await _energyDataUpdater.ClearAllDataAsync();
+                await SelectFullDateRangesAsync();
+            });
+            IsBusy = false;
+        });
+
         public ICommand SetEntireEnteredTimePeriod => new RelayCommand(async (o) =>
         {
             await SelectFullDateRangesAsync();

@@ -15,7 +15,7 @@
     <DockPanel>
         <ScrollViewer DockPanel.Dock="Right" VerticalScrollBarVisibility="Auto" Margin="0,0,5,0">
             <StackPanel x:Name="RootStackPanel">
-                <Button Content="Load from csv" Command="{Binding LoadFromFile}" Margin="0,4"/>
+                <Button Content="Importuj z pliku CSV" Command="{Binding LoadFromFile}" Margin="0,4"/>
                 <TextBlock Text="Importowane dane zostaną dołączone do już istniejących lub zostaną zaktualizowane."
                            TextWrapping="Wrap"
                            HorizontalAlignment="Stretch"
@@ -80,6 +80,8 @@
                     <Label Grid.Column="1" Grid.Row="4" Content="{Binding DiffBBNetto, FallbackValue=000}" Style="{StaticResource DigitalValue}" Foreground="Purple"/>
                     <Label Grid.Column="2" Grid.Row="4" Content="{Binding DiffABNetto, FallbackValue=000}" Style="{StaticResource DigitalValue}" Foreground="Purple"/>
                 </Grid>
+
+                <Button Content="Usuń wszystkie dane" Command="{Binding ClearAllData}" Margin="0,15,0,0"/>
             </StackPanel>
         </ScrollViewer>
 

@@ -1,18 +1,17 @@
 ﻿using ScottPlot;
 using ScottPlot.Plottables;
-using ScottPlot.WPF;
 
 namespace ProsumentEneaItmTool.UI.CustomControls
 {
     internal class GraphFlow
     {
         private readonly Plot _plot;
-        private Scatter _scatter;
-        private DateTime[] _dates;
-        private double[] _values;
-        private string _legend;
-        private Color _color;
-        private string _pointDescriptionFormat;
+        private Scatter? _scatter;
+        private readonly DateTime[] _dates;
+        private readonly double[] _values;
+        private readonly string _legend;
+        private readonly Color _color;
+        private readonly string _pointDescriptionFormat;
 
         public GraphFlow(Plot plot, DateTime[] dates, double[] values, string legend, Color color, string pointDescriptionFormat)
         {
@@ -28,6 +27,8 @@ namespace ProsumentEneaItmTool.UI.CustomControls
 
         public void PointDetailsIfMouseOver(Coordinates mouseLocation, Crosshair crosshair, ref bool showCross, ref string pointDetails)
         {
+            ArgumentNullException.ThrowIfNull(_scatter);
+
             DataPoint nearest = _scatter.Data.GetNearest(mouseLocation, _plot.LastRender);
             if (nearest.IsReal)
             {

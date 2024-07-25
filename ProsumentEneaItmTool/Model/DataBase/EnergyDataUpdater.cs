@@ -23,5 +23,11 @@ namespace ProsumentEneaItmTool.Model.DataBase
             await _dataContext.ImportedRecords.AddRangeAsync(records);
             await _dataContext.SaveChangesAsync();
         }
+
+        public async Task ClearAllDataAsync()
+        {
+            await _dataContext.ImportedRecords.ExecuteDeleteAsync();
+            await _dataContext.SaveChangesAsync();
+        }
     }
 }
