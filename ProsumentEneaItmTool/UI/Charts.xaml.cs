@@ -131,7 +131,7 @@ namespace ProsumentEneaItmTool.UI
                     _myCrosshair.IsVisible = true;
                     _myCrosshair.Position = takenABscNearest.Coordinates;
                     WpfPlot.Refresh();
-                    PoinyInfo.Content = $"{DateTime.FromOADate(takenABscNearest.X):yyyy.MM.dd}, Wolumin pobranej mocy = {takenABscNearest.Y:0.#} kWh";
+                    PoinyInfo.Content = $"{DateTime.FromOADate(takenABscNearest.X):yyyy.MM.dd}, Wolumin pobranej energii = {takenABscNearest.Y:0.#} kWh";
                     showCross = true;
                 }
 
@@ -141,7 +141,7 @@ namespace ProsumentEneaItmTool.UI
                     _myCrosshair.IsVisible = true;
                     _myCrosshair.Position = fedABscNearest.Coordinates;
                     WpfPlot.Refresh();
-                    PoinyInfo.Content = $"{DateTime.FromOADate(fedABscNearest.X):yyyy.MM.dd}, Wolumin wysłanej mocy = {fedABscNearest.Y:0.#} kWh";
+                    PoinyInfo.Content = $"{DateTime.FromOADate(fedABscNearest.X):yyyy.MM.dd}, Wolumin wysłanej energii = {fedABscNearest.Y:0.#} kWh";
                     showCross = true;
                 }
 
@@ -151,7 +151,7 @@ namespace ProsumentEneaItmTool.UI
                     _myCrosshair.IsVisible = true;
                     _myCrosshair.Position = diffABscNearest.Coordinates;
                     WpfPlot.Refresh();
-                    PoinyInfo.Content = $"{DateTime.FromOADate(diffABscNearest.X):yyyy.MM.dd}, Różnica mocy jeden do jeden = {diffABscNearest.Y:0.#} kWh";
+                    PoinyInfo.Content = $"{DateTime.FromOADate(diffABscNearest.X):yyyy.MM.dd}, Różnica energii jeden do jeden = {diffABscNearest.Y:0.#} kWh";
                     showCross = true;
                 }
 
@@ -161,7 +161,7 @@ namespace ProsumentEneaItmTool.UI
                     _myCrosshair.IsVisible = true;
                     _myCrosshair.Position = diffABnscNearest.Coordinates;
                     WpfPlot.Refresh();
-                    PoinyInfo.Content = $"{DateTime.FromOADate(diffABnscNearest.X):yyyy.MM.dd}, Moc do wykorzystania = {diffABnscNearest.Y:0.#} kWh";
+                    PoinyInfo.Content = $"{DateTime.FromOADate(diffABnscNearest.X):yyyy.MM.dd}, Energia do wykorzystania = {diffABnscNearest.Y:0.#} kWh";
                     showCross = true;
                 }
 
