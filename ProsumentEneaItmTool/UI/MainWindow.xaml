@@ -3,7 +3,8 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        xmlns:local="clr-namespace:ProsumentEneaItmTool.UI" xmlns:customcontrols="clr-namespace:ProsumentEneaItmTool.UI.CustomControls"
+        xmlns:local="clr-namespace:ProsumentEneaItmTool.UI"
+        xmlns:customcontrols="clr-namespace:ProsumentEneaItmTool.UI.CustomControls"
         d:DataContext="{d:DesignInstance Type=local:MainWindowVM}"
         mc:Ignorable="d"
         Title="Prosument Enea Itm Tool"
@@ -83,7 +84,7 @@
         </ScrollViewer>
 
         <Grid>
-            <local:Charts Records="{Binding Records}"/>
+            <customcontrols:Charts Records="{Binding Records}"/>
             <Border Background="#66222222" Visibility="{Binding IsBusy, Converter={StaticResource BoolToVis}}">
                 <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
                     <Label Content="Ładowanie" Visibility="Collapsed"/>
