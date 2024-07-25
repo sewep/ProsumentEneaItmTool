@@ -59,15 +59,10 @@ jobs:
 
       - name: Create Release
         id: create_release
-        uses: actions/create-release@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: v${{ env.VERSION }}
-          release_name: Release v${{ env.VERSION }}
-          body: "Automatycznie wygenerowane wydanie"
-          draft: false
-          prerelease: false
+        run: |
+          gh release create v${{ env.VERSION }} --title "Release v${{ env.VERSION }}" --notes "Automatic generated release"
 
       - name: Zip the artifact
         run: |
