@@ -1,6 +1,6 @@
 ﻿namespace ProsumentEneaItmTool.Domain
 {
-    internal class CalculationEnergyResults
+    public class CalculationEnergyResults
     {
         public DateTime Time { get; set; }
         public double ConsumedBeforeBalancing { get; set; }

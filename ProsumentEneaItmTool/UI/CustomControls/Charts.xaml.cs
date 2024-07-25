@@ -1,6 +1,7 @@
 ﻿using System.Windows;
 using System.Windows.Controls;
-using ProsumentEneaItmTool.Domain;
+using System.Windows.Input;
+using ProsumentEneaItmTool.Model.Calculations;
 using ScottPlot;
 using ScottPlot.Plottables;
 using ScottPlot.WPF;
@@ -14,21 +15,26 @@ namespace ProsumentEneaItmTool.UI.CustomControls
     {
         private Crosshair? _myCrosshair;
 
-        public List<ImportFileRecord> Records
+        public IPowerCalculation Calculations
         {
-            get { return (List<ImportFileRecord>)GetValue(RecordsProperty); }
-            set { SetValue(RecordsProperty, value); }
+            get { return (IPowerCalculation)GetValue(CalculationsProperty); }
+            set { SetValue(CalculationsProperty, value); }
         }
 
-        public static readonly DependencyProperty RecordsProperty =
-            DependencyProperty.Register("Records", typeof(List<ImportFileRecord>), typeof(Charts), new PropertyMetadata(new List<ImportFileRecord>(), OnRecordsChange));
+        public static readonly DependencyProperty CalculationsProperty =
+            DependencyProperty.Register("Calculations", typeof(IPowerCalculation), typeof(Charts), new PropertyMetadata(null, OnRecordsChange));
 
         private static void OnRecordsChange(DependencyObject d, DependencyPropertyChangedEventArgs e)
         {
             if (d is Charts charts)
             {
-                charts.ReloadData();
+                charts.Calculations.CalculationUpdated += charts.OnCalculationsUpdated;
             }
+        }
+
+        private void OnCalculationsUpdated(object? sender, EventArgs e)
+        {
+            ReloadData();
         }
 
         public Charts()
@@ -40,46 +46,42 @@ namespace ProsumentEneaItmTool.UI.CustomControls
 
         private void ReloadData()
         {
+            bool isUiThread = Application.Current.Dispatcher.CheckAccess();
+            if (!isUiThread)
+            {
+                Application.Current.Dispatcher.Invoke(() =>
+                {
+                    ReloadData();
+                });
+                return;
+            }
+
             WpfPlot.Plot.Clear();
 
-            DateTime[] dates = Records.Select(x => x.Date).ToArray();
-            List<double> takenBB = [];
-            List<double> takenAB = [];
-            List<double> fedBB = [];
-            List<double> fedAB = [];
-            List<double> diffBB = [];
-            List<double> diffAB = [];
-            List<double> diffBBn = [];
-            List<double> diffABn = [];
-
-            for (int i = 0; i < Records.Count; i++)
+            if (Calculations is null)
             {
-                var record = Records[i];
-
-                takenBB.Add((i > 0 ? takenBB.Last() : 0) + record.TakenVolumeBeforeBanancing);
-                takenAB.Add((i > 0 ? takenAB.Last() : 0) + record.TakenVolumeAfterBanancing);
-                fedBB.Add((i > 0 ? fedBB.Last() : 0) + record.FedVolumeBeforeBanancing);
-                fedAB.Add((i > 0 ? fedAB.Last() : 0) + record.FedVolumeAfterBanancing);
-
-                diffBB.Add(fedBB.Last() - takenBB.Last());
-                diffAB.Add(fedAB.Last() - takenAB.Last());
-                var currBBn = record.FedVolumeBeforeBanancing * 0.8 - record.TakenVolumeBeforeBanancing;
-                var currABn = record.FedVolumeAfterBanancing * 0.8 - record.TakenVolumeAfterBanancing;
-                diffBBn.Add((i > 0 ? diffBBn.Last() : 0) + currBBn);
-                diffABn.Add((i > 0 ? diffABn.Last() : 0) + currABn);
+                return;
             }
+
+            var chartPoints = Calculations.CalculationEnergyChart;
+
+            DateTime[] dates = chartPoints.Select(x => x.Time).ToArray();
+            var takenAB = chartPoints.Select(x => x.ConsumedAfterBalancing).ToArray();
+            var fedAB = chartPoints.Select(x => x.FedAfterBalancing).ToArray();
+            var diffAB = chartPoints.Select(x => x.DifferenceAfterBalancing).ToArray();
+            var diffABn = chartPoints.Select(x => x.FreeToUseAfterBalancing).ToArray();
 
             var plot = WpfPlot.Plot;
             var scatters = new List<GraphFlow>()
             {
-                new(plot, dates, takenAB.ToArray(), "Pob. po b.", Color.FromARGB(0xffff0000), "{0:yyyy.MM.dd}, Wolumin pobranej energii = {1:F0} kWh"),
-                new(plot, dates, fedAB.ToArray(), "Wys. po b.", Color.FromARGB(0xff00bb00), "{0:yyyy.MM.dd}, Wolumin wysłanej energii = {1:F0} kWh"),
-                new(plot, dates, diffAB.ToArray(), "Różnica po b.", Color.FromARGB(0xff0000ff), "{0:yyyy.MM.dd}, Różnica energii jeden do jeden = {1:F0} kWh"),
-                new(plot, dates, diffABn.ToArray(), "Netto po b.", Color.FromARGB(0xffff00ff), "{0:yyyy.MM.dd}, Energia do wykorzystania = {1:F0} kWh"),
+                new(plot, dates, takenAB, "Pob. po b.", Color.FromARGB(0xffff0000), "{0:yyyy.MM.dd}, Wolumin pobranej energii = {1:F0} kWh"),
+                new(plot, dates, fedAB, "Wys. po b.", Color.FromARGB(0xff00bb00), "{0:yyyy.MM.dd}, Wolumin wysłanej energii = {1:F0} kWh"),
+                new(plot, dates, diffAB, "Różnica po b.", Color.FromARGB(0xff0000ff), "{0:yyyy.MM.dd}, Różnica energii jeden do jeden = {1:F0} kWh"),
+                new(plot, dates, diffABn, "Netto po b.", Color.FromARGB(0xffff00ff), "{0:yyyy.MM.dd}, Energia do wykorzystania = {1:F0} kWh"),
             };
 
             var horizontalLine = plot.Add.HorizontalLine(0.0);
-            horizontalLine.Color = Color.FromARGB(0xff00000);
+            horizontalLine.Color = Color.FromARGB(0xff000000);
 
             plot.Axes.DateTimeTicksBottom();
             plot.ShowLegend(Alignment.UpperLeft);
@@ -91,17 +93,7 @@ namespace ProsumentEneaItmTool.UI.CustomControls
 
             WpfPlot.MouseMove += (s, e) =>
             {
-                PresentationSource source = PresentationSource.FromVisual(this);
-                double dpiXsc = 1;
-                double dpiYsc = 1;
-                if (source != null)
-                {
-                    dpiXsc = source.CompositionTarget.TransformToDevice.M11;
-                    dpiYsc = source.CompositionTarget.TransformToDevice.M22;
-                }
-
-                Pixel mousePixel = new(e.GetPosition(WpfPlot).X * dpiXsc, e.GetPosition(WpfPlot).Y * dpiYsc);
-                Coordinates mouseLocation = plot.GetCoordinates(mousePixel);
+                Coordinates mouseLocation = GetMouseCursorPositon(e, plot);
 
                 bool showCross = false;
                 string pointDetails = string.Empty;
@@ -122,6 +114,22 @@ namespace ProsumentEneaItmTool.UI.CustomControls
             };
 
             WpfPlot.Refresh();
+        }
+
+        private Coordinates GetMouseCursorPositon(MouseEventArgs e, Plot plot)
+        {
+            PresentationSource source = PresentationSource.FromVisual(this);
+            double dpiXsc = 1;
+            double dpiYsc = 1;
+            if (source != null)
+            {
+                dpiXsc = source.CompositionTarget.TransformToDevice.M11;
+                dpiYsc = source.CompositionTarget.TransformToDevice.M22;
+            }
+
+            Pixel mousePixel = new(e.GetPosition(WpfPlot).X * dpiXsc, e.GetPosition(WpfPlot).Y * dpiYsc);
+            Coordinates mouseLocation = plot.GetCoordinates(mousePixel);
+            return mouseLocation;
         }
     }
 }

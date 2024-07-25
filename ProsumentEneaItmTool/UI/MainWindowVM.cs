@@ -76,6 +76,8 @@ namespace ProsumentEneaItmTool.UI
 
         public CalculationEnergyResults CalculationEnergyResults => _powerCalculation.CalculationEnergyResults;
 
+        public IPowerCalculation PowerCalculation => _powerCalculation;
+
         public List<ImportFileRecord> Records
         {
             get => _records;
