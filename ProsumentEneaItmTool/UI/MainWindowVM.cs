@@ -2,6 +2,7 @@
 using System.Windows;
 using System.Windows.Input;
 using ProsumentEneaItmTool.Domain;
+using ProsumentEneaItmTool.Model.Calculations;
 using ProsumentEneaItmTool.Model.DataBase;
 using ProsumentEneaItmTool.Model.ImportSource;
 
@@ -12,17 +13,22 @@ namespace ProsumentEneaItmTool.UI
         private readonly IFileEneaCsvLoader _fileEneaCsvLoader;
         private readonly IEnergyDataExtractor _energyDataExtractor;
         private readonly IEnergyDataUpdater _energyDataUpdater;
+        private readonly IPowerCalculation _powerCalculation;
 
         private DateTime _dateFrom;
         private DateTime _dateTo;
         private List<ImportFileRecord> _records = [];
         private int _isBusyCounter = 0;
 
-        public MainWindowVM(IFileEneaCsvLoader fileEneaCsvLoader, IEnergyDataExtractor energyDataExtractor, IEnergyDataUpdater energyDataUpdater)
+        public MainWindowVM(IFileEneaCsvLoader fileEneaCsvLoader,
+                            IEnergyDataExtractor energyDataExtractor,
+                            IEnergyDataUpdater energyDataUpdater,
+                            IPowerCalculation powerCalculation)
         {
             _fileEneaCsvLoader = fileEneaCsvLoader;
             _energyDataExtractor = energyDataExtractor;
             _energyDataUpdater = energyDataUpdater;
+            _powerCalculation = powerCalculation;
 
             _ = SelectFullDateRangesAsync();
         }
@@ -68,14 +74,19 @@ namespace ProsumentEneaItmTool.UI
             }
         }
 
-        public double TotalConsumingBB => Records.Sum(x => x.TakenVolumeBeforeBanancing);
-        public double TotalConsumingAB => Records.Sum(x => x.TakenVolumeAfterBanancing);
-        public double TotalFedBB => Records.Sum(x => x.FedVolumeBeforeBanancing);
-        public double TotalFedAB => Records.Sum(x => x.FedVolumeAfterBanancing);
-        public double DiffBB => TotalFedBB - TotalConsumingBB;
-        public double DiffAB => TotalFedAB - TotalConsumingAB;
-        public double DiffBBNetto => TotalFedBB * 0.8 - TotalConsumingBB;
-        public double DiffABNetto => TotalFedAB * 0.8 - TotalConsumingAB;
+        public CalculationEnergyResults CalculationEnergyResults => _powerCalculation.CalculationEnergyResults;
+
+        public List<ImportFileRecord> Records
+        {
+            get => _records;
+            set
+            {
+                _records = value;
+                _powerCalculation.Calculate(_records);
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(CalculationEnergyResults));
+            }
+        }
 
         public ICommand LoadFromFile => new RelayCommand(async (o) =>
         {
@@ -117,33 +128,12 @@ namespace ProsumentEneaItmTool.UI
             await SelectFullDateRangesAsync();
         });
 
-        public List<ImportFileRecord> Records
-        {
-            get => _records;
-            set
-            {
-                _records = value;
-                OnPropertyChanged();
-
-                OnPropertyChanged(
-                    nameof(TotalConsumingBB),
-                    nameof(TotalConsumingAB),
-                    nameof(TotalFedBB),
-                    nameof(TotalFedAB),
-                    nameof(DiffBB),
-                    nameof(DiffAB),
-                    nameof(DiffBBNetto),
-                    nameof(DiffABNetto));
-            }
-        }
-
         private async Task SelectFullDateRangesAsync()
         {
             IsBusy = true;
             await Task.Run(async () =>
             {
                 (DateFrom, DateTo) = await _energyDataExtractor.GetDateRangesAsync();
-
                 await UseSelectedRangeAsync();
             });
             IsBusy = false;
