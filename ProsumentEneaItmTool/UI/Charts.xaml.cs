@@ -94,6 +94,11 @@ namespace ProsumentEneaItmTool.UI
             diffABsc.MarkerStyle.Size = 2;
             diffABnsc.MarkerStyle.Size = 2;
 
+            takenABsc.Color = Color.FromARGB(0xffff0000);
+            fedABsc.Color = Color.FromARGB(0xff00bb00);
+            diffABsc.Color = Color.FromARGB(0xff0000ff);
+            diffABnsc.Color = Color.FromARGB(0xffff00ff);
+
             plot.Add.HorizontalLine(0.0);
 
             plot.Axes.DateTimeTicksBottom();
