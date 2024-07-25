@@ -72,10 +72,10 @@ namespace ProsumentEneaItmTool.UI.CustomControls
             var plot = WpfPlot.Plot;
             var scatters = new List<GraphFlow>()
             {
-                new(plot, dates, takenAB.ToArray(), "Pob. po b.", Color.FromARGB(0xffff0000), "{0):yyyy.MM.dd}, Wolumin pobranej energii = {1:F0} kWh"),
-                new(plot, dates, fedAB.ToArray(), "Wys. po b.", Color.FromARGB(0xff00bb00), "{0):yyyy.MM.dd}, Wolumin wysłanej energii = {1:F0} kWh"),
-                new(plot, dates, diffAB.ToArray(), "Różnica po b.", Color.FromARGB(0xff0000ff), "{0):yyyy.MM.dd}, Różnica energii jeden do jeden = {1:F0} kWh"),
-                new(plot, dates, diffABn.ToArray(), "Netto po b.", Color.FromARGB(0xffff00ff), "{0):yyyy.MM.dd}, Energia do wykorzystania = {1:F0} kWh"),
+                new(plot, dates, takenAB.ToArray(), "Pob. po b.", Color.FromARGB(0xffff0000), "{0:yyyy.MM.dd}, Wolumin pobranej energii = {1:F0} kWh"),
+                new(plot, dates, fedAB.ToArray(), "Wys. po b.", Color.FromARGB(0xff00bb00), "{0:yyyy.MM.dd}, Wolumin wysłanej energii = {1:F0} kWh"),
+                new(plot, dates, diffAB.ToArray(), "Różnica po b.", Color.FromARGB(0xff0000ff), "{0:yyyy.MM.dd}, Różnica energii jeden do jeden = {1:F0} kWh"),
+                new(plot, dates, diffABn.ToArray(), "Netto po b.", Color.FromARGB(0xffff00ff), "{0:yyyy.MM.dd}, Energia do wykorzystania = {1:F0} kWh"),
             };
 
             var horizontalLine = plot.Add.HorizontalLine(0.0);

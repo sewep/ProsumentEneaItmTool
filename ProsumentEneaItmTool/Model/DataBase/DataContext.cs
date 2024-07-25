@@ -3,7 +3,7 @@ using ProsumentEneaItmTool.Domain;
 
 namespace ProsumentEneaItmTool.Model.DataBase
 {
-    public class DataContext : DbContext
+    public class DataContext : DbContext, IDataContext
     {
         private readonly string _dbFile = "datastorage.sqlite";
 

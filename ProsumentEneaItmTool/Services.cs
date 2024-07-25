@@ -14,6 +14,9 @@ namespace ProsumentEneaItmTool
             services.AddTransient(s => new MainWindow() { DataContext = s.GetService<MainWindowVM>() });
 
             services.AddDbContext<DataContext>();
+            services.AddSingleton<IDataContext>((s) => s.GetService<DataContext>()!);
+            services.AddTransient<IEnergyDataExtractor, EnergyDataExtractor>();
+            services.AddTransient<IEnergyDataUpdater, EnergyDataUpdater>();
 
             services.AddSingleton<IFileSystem>((s) => new FileSystem());
             services.AddTransient<IFileEneaCsvLoader, FileEneaCsvLoader>();

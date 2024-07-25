@@ -1,7 +1,6 @@
 ﻿using System.Diagnostics;
 using System.Windows;
 using System.Windows.Input;
-using Microsoft.EntityFrameworkCore;
 using ProsumentEneaItmTool.Domain;
 using ProsumentEneaItmTool.Model.DataBase;
 using ProsumentEneaItmTool.Model.ImportSource;
@@ -10,18 +9,20 @@ namespace ProsumentEneaItmTool.UI
 {
     internal class MainWindowVM : ObservedObject
     {
-        private readonly DataContext _dataContext;
         private readonly IFileEneaCsvLoader _fileEneaCsvLoader;
+        private readonly IEnergyDataExtractor _energyDataExtractor;
+        private readonly IEnergyDataUpdater _energyDataUpdater;
 
         private DateTime _dateFrom;
         private DateTime _dateTo;
         private List<ImportFileRecord> _records = [];
         private int _isBusyCounter = 0;
 
-        public MainWindowVM(DataContext dataContext, IFileEneaCsvLoader fileEneaCsvLoader)
+        public MainWindowVM(IFileEneaCsvLoader fileEneaCsvLoader, IEnergyDataExtractor energyDataExtractor, IEnergyDataUpdater energyDataUpdater)
         {
-            _dataContext = dataContext;
             _fileEneaCsvLoader = fileEneaCsvLoader;
+            _energyDataExtractor = energyDataExtractor;
+            _energyDataUpdater = energyDataUpdater;
 
             _ = SelectFullDateRangesAsync();
         }
@@ -87,8 +88,7 @@ namespace ProsumentEneaItmTool.UI
 
                 await Task.Run(async () =>
                 {
-                    await AddOrUpdateDataAsync(list);
-                    await _dataContext.SaveChangesAsync();
+                    await _energyDataUpdater.AddOrUpdateDataAsync(list);
                 });
 
                 IsBusy = false;
@@ -100,18 +100,6 @@ namespace ProsumentEneaItmTool.UI
 
             await SelectFullDateRangesAsync();
         });
-
-        private async Task AddOrUpdateDataAsync(List<ImportFileRecord> list)
-        {
-
-            list.ForEach(async x =>
-            {
-                var toRemove = await _dataContext.ImportedRecords.Where(y => y.Date.Equals(x.Date)).ToListAsync();
-                _dataContext.ImportedRecords.RemoveRange(toRemove);
-            });
-
-            await _dataContext.ImportedRecords.AddRangeAsync(list);
-        }
 
         public ICommand SetEntireEnteredTimePeriod => new RelayCommand(async (o) =>
         {
@@ -143,15 +131,7 @@ namespace ProsumentEneaItmTool.UI
             IsBusy = true;
             await Task.Run(async () =>
             {
-                if (!await _dataContext.ImportedRecords.AnyAsync())
-                {
-                    DateFrom = DateTo = DateTime.Now;
-                    IsBusy = false;
-                    return;
-                }
-
-                DateFrom = _dataContext.ImportedRecords.Min(x => x.Date);
-                DateTo = _dataContext.ImportedRecords.Max(x => x.Date);
+                (DateFrom, DateTo) = await _energyDataExtractor.GetDateRangesAsync();
 
                 await UseSelectedRangeAsync();
             });
@@ -161,9 +141,7 @@ namespace ProsumentEneaItmTool.UI
         private async Task UseSelectedRangeAsync()
         {
             IsBusy = true;
-            Records = await _dataContext.ImportedRecords
-                .Where(x => x.Date >= DateFrom && x.Date <= DateTo)
-                .ToListAsync();
+            Records = await _energyDataExtractor.GetItemsByDateRangesAsync(DateFrom, DateTo);
             IsBusy = false;
         }
     }

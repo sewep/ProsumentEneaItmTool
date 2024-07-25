@@ -27,10 +27,6 @@
     </AssemblyAttribute>
   </ItemGroup>
 
-  <ItemGroup>
-    <Folder Include="Infrastructure\" />
-  </ItemGroup>
-
   <Target Name="PostPublishCleanup" AfterTargets="Publish">
     <PropertyGroup>
       <RuntimeDir>$(PublishDir)runtimes\</RuntimeDir>
@@ -38,7 +34,7 @@
     <ItemGroup>
       <TestProjectFolderPath Include="$([System.IO.Directory]::GetDirectories(`$(RuntimeDir)`))" Exclude="$(RuntimeDir)win-x64\;$(RuntimeDir)win-x86" />
     </ItemGroup>
-    <RemoveDir Directories="@(TestProjectFolderPath)" ContinueOnError="WarnAndContinue"/>
+    <RemoveDir Directories="@(TestProjectFolderPath)" ContinueOnError="WarnAndContinue" />
   </Target>
 
 </Project>
