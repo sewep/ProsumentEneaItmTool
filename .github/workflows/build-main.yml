@@ -64,9 +64,13 @@ jobs:
         run: |
           gh release create v${{ env.VERSION }} --title "Release v${{ env.VERSION }}" --notes "Automatic generated release"
 
+      - name: Check output directory
+        run: |
+          ls -al ./output
+
       - name: Zip the artifact
         run: |
-          zip -r ProsumentEneaItmTool_${{ env.VERSION }}.zip output
+          zip -r ProsumentEneaItmTool_${{ env.VERSION }}.zip ./output
 
       - name: Upload Release Asset
         uses: actions/upload-release-asset@v1
