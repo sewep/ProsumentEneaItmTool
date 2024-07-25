@@ -32,3 +32,52 @@ jobs:
         with:
           name: ProsumentEneaItmTool
           path: ./output
+
+  release:
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.event_name == 'workflow_dispatch'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: ProsumentEneaItmTool
+
+      - name: Install xmllint
+        run: sudo apt-get install -y libxml2-utils
+
+      - name: Extract version from Directory.Build.props
+        id: get_version
+        run: |
+          version=$(xmllint --xpath "string(//Project/PropertyGroup/Version)" Directory.Build.props)
+          echo "VERSION=$version" >> $GITHUB_ENV
+
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: v${{ env.VERSION }}
+          release_name: Release v${{ env.VERSION }}
+          body: "Automatycznie wygenerowane wydanie"
+          draft: false
+          prerelease: false
+
+      - name: Zip the artifact
+        run: |
+          zip -r ProsumentEneaItmTool_${{ env.VERSION }}.zip output
+
+      - name: Upload Release Asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ProsumentEneaItmTool_${{ env.VERSION }}.zip
+          asset_name: ProsumentEneaItmTool_${{ env.VERSION }}.zip
+          asset_content_type: application/zip
