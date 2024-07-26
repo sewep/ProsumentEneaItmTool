@@ -65,9 +65,9 @@ jobs:
         run: |
           gh release create v${{ env.VERSION }} --title "Release v${{ env.VERSION }}" --notes "Automatic generated release"
 
-      - name: Check output directory
+      - name: Check root directory
         run: |
-          ls -al ./output
+          ls -al .
 
       - name: Zip the artifact
         run: |
