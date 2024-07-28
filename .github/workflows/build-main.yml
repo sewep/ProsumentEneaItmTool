@@ -47,7 +47,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: ProsumentEneaItmTool
-          path: .
+          path: ./output
 
       - name: Install xmllint
         run: sudo apt-get install -y libxml2-utils
@@ -58,27 +58,29 @@ jobs:
           version=$(xmllint --xpath "string(//Project/PropertyGroup/Version)" Directory.Build.props)
           echo "VERSION=$version" >> $GITHUB_ENV
 
-      - name: Create Release
-        id: create_release
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Check root directory
         run: |
-          gh release create v${{ env.VERSION }} --title "Release v${{ env.VERSION }}" --notes "Automatic generated release"
-
-      - name: Check output directory
-        run: |
-          ls -al ./output
+          ls -al .
 
       - name: Zip the artifact
         run: |
           zip -r ProsumentEneaItmTool_${{ env.VERSION }}.zip ./output
 
-      - name: Upload Release Asset
-        uses: actions/upload-release-asset@v1
+      - name: Create Release
+        id: create_release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ProsumentEneaItmTool_${{ env.VERSION }}.zip
-          asset_name: ProsumentEneaItmTool_${{ env.VERSION }}.zip
-          asset_content_type: application/zip
+        run: |
+          gh release create v${{ env.VERSION }} \
+            --title "Release v${{ env.VERSION }}" \
+            --notes "Automatycznie wygenerowane wydanie" \
+            --draft false \
+            --prerelease false
+
+      - name: Upload Release Asset
+        id: upload_asset
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release upload v${{ env.VERSION }} \
+            ProsumentEneaItmTool_${{ env.VERSION }}.zip
