@@ -1,11 +1,13 @@
 ﻿using System.Globalization;
+using System.Text;
+using System.Windows;
 using ProsumentEneaItmTool.Domain;
 
 namespace ProsumentEneaItmTool.Model.ImportSource
 {
     internal class EneaCsvFileParser
     {
-        private static readonly string _dateFormat = "yyyy.MM.dd HH:mm:ss";
+        private static readonly string[] _dateFormat = { "yyyy.MM.dd HH:mm:ss", "yyyy-MM-dd HH:mm" };
         private static readonly CultureInfo _culture = new("pl-PL");
 
         public static IEnumerable<ImportFileRecord> Parse(string data)
@@ -20,16 +22,35 @@ namespace ProsumentEneaItmTool.Model.ImportSource
 
             rows.RemoveAt(0);
 
+            var parseWarnings = new StringBuilder();
+
             foreach (var row in rows)
             {
                 var cells = row.Split(';');
 
-                if (cells.Any(c => string.IsNullOrEmpty(c) || c!.Contains("---")))
+                try
                 {
-                    continue;
-                }
 
-                result.Add(CellsToRecord(cells));
+                    if (cells.Any(c => string.IsNullOrEmpty(c) || c!.Contains("---")))
+                    {
+                        continue;
+                    }
+
+                    result.Add(CellsToRecord(cells));
+                }
+                catch (Exception e)
+                {
+                    parseWarnings.AppendLine($"Not parsed row: {row}");
+                }
+            }
+
+            if (parseWarnings.Length > 0)
+            {
+                MessageBox.Show(
+                    "Problem z pasrowaniem rekordów: \r\n" + parseWarnings.ToString(),
+                    "Uwagi",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning);
             }
 
             return result;
@@ -42,11 +63,25 @@ namespace ProsumentEneaItmTool.Model.ImportSource
                 .Replace("\"", "");
         }
 
+        private static DateTime TryParseDate(string dateTime)
+        {
+            foreach (var format in _dateFormat)
+            {
+                var candidate = dateTime[..Math.Min(format.Length, dateTime.Length)];
+                if (DateTime.TryParse(candidate, CultureInfo.InvariantCulture, out var date))
+                {
+                    return date;
+                }
+            }
+
+            throw new ArgumentException($"Can't parse date time {dateTime}.");
+        }
+
         private static ImportFileRecord CellsToRecord(string[] cells)
         {
             return new ImportFileRecord()
             {
-                Date = DateTime.ParseExact(cells[0].Trim(), _dateFormat, CultureInfo.InvariantCulture),
+                Date = TryParseDate(cells[0]),
                 TakenVolumeBeforeBanancing = double.Parse(cells[1], _culture),
                 FedVolumeBeforeBanancing = double.Parse(cells[2], _culture),
                 TakenVolumeAfterBanancing = double.Parse(cells[3], _culture),

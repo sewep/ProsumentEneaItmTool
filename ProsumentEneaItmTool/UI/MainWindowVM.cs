@@ -136,10 +136,28 @@ namespace ProsumentEneaItmTool.UI
             IsBusy = false;
         });
 
+        public ICommand SetLastYear => new RelayCommand(async (o) =>
+        {
+            await SetLastYearAsync();
+        });
+
         public ICommand SetEntireEnteredTimePeriod => new RelayCommand(async (o) =>
         {
             await SelectFullDateRangesAsync();
         });
+
+        private async Task SetLastYearAsync()
+        {
+            IsBusy = true;
+            await Task.Run(async () =>
+            {
+                DateTime dateFrom;
+                (dateFrom, DateTo) = await _energyDataExtractor.GetDateRangesAsync();
+                DateFrom = DateTo.AddYears(-1);
+                await UseSelectedRangeAsync();
+            });
+            IsBusy = false;
+        }
 
         private async Task SelectFullDateRangesAsync()
         {
