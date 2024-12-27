@@ -26,7 +26,11 @@ namespace ProsumentEneaItmTool.Model.ImportSource
 
             foreach (var row in rows)
             {
-                var cells = row.Split(';');
+                // Remove some strange strings from report.
+                var rowClened = row.Replace("=", "");
+
+
+                var cells = rowClened.Split(';');
 
                 try
                 {
