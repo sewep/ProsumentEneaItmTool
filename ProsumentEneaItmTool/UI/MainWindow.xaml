@@ -99,7 +99,7 @@
         </ScrollViewer>
 
         <Grid>
-            <customcontrols:Charts Calculations="{Binding PowerCalculation}"/>
+            <customcontrols:Charts Calculations="{Binding PowerCalculation}" Margin="5" Padding="20,0,0,0"/>
             <Border Background="#66222222" Visibility="{Binding IsBusy, Converter={StaticResource BoolToVis}}">
                 <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
                     <Label Content="Ładowanie" Visibility="Collapsed"/>

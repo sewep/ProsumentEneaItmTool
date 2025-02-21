@@ -81,15 +81,29 @@ namespace ProsumentEneaItmTool.UI.CustomControls
             };
 
             var horizontalLine = plot.Add.HorizontalLine(0.0);
+            horizontalLine.Axes.YAxis = plot.Axes.Right;
             horizontalLine.Color = Color.FromARGB(0xff000000);
 
             plot.Axes.DateTimeTicksBottom();
+            plot.Grid.YAxis = plot.Axes.Right;
+            
             plot.ShowLegend(Alignment.UpperLeft);
 
             _myCrosshair = plot.Add.Crosshair(0, 0);
             _myCrosshair.IsVisible = false;
             _myCrosshair.MarkerShape = MarkerShape.OpenCircle;
-            _myCrosshair.MarkerSize = 15;
+            _myCrosshair.MarkerSize = 5;
+
+            plot.Axes.Left.IsVisible = false;
+            plot.Axes.Left.MinimumSize = 15;
+
+            foreach (var scatter in scatters)
+            {
+                if (scatter.Scatter != null)
+                {
+                    scatter.Scatter.Axes.YAxis = plot.Axes.Right;
+                }
+            }
 
             WpfPlot.MouseMove += (s, e) =>
             {

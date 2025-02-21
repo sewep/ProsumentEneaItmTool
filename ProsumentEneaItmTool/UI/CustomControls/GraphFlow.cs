@@ -39,6 +39,8 @@ namespace ProsumentEneaItmTool.UI.CustomControls
             }
         }
 
+        public Scatter? Scatter => _scatter;
+
         private void AddToPlot()
         {
             _scatter = _plot.Add.Scatter(_dates, _values);
