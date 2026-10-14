@@ -8,6 +8,7 @@ namespace ProsumentEneaItmTool.Tests.Model.DataBase
     internal class EnergyDataTests
     {
         private SqliteConnection _connection = null!;
+        private TestDataContextFactory _factory = null!;
         private DataContext _dataContext = null!;
 
         [SetUp]
@@ -19,7 +20,9 @@ namespace ProsumentEneaItmTool.Tests.Model.DataBase
             var options = new DbContextOptionsBuilder<DataContext>()
                 .UseSqlite(_connection)
                 .Options;
-            _dataContext = new DataContext(options);
+            _factory = new TestDataContextFactory(options);
+            _dataContext = _factory.CreateDbContext();
+            _dataContext.Database.Migrate();
         }
 
         [TearDown]
@@ -27,6 +30,11 @@ namespace ProsumentEneaItmTool.Tests.Model.DataBase
         {
             _dataContext.Dispose();
             _connection.Dispose();
+        }
+
+        private sealed class TestDataContextFactory(DbContextOptions<DataContext> options) : IDbContextFactory<DataContext>
+        {
+            public DataContext CreateDbContext() => new(options);
         }
 
         private static ImportFileRecord Record(DateTime date, double taken) => new()
@@ -39,7 +47,7 @@ namespace ProsumentEneaItmTool.Tests.Model.DataBase
         [Test]
         public async Task AddOrUpdateData_ReplacesRecordsWithSameDate()
         {
-            var updater = new EnergyDataUpdater(_dataContext);
+            var updater = new EnergyDataUpdater(_factory);
             var date1 = new DateTime(2024, 1, 1, 10, 0, 0);
             var date2 = new DateTime(2024, 1, 1, 11, 0, 0);
             var date3 = new DateTime(2024, 1, 1, 12, 0, 0);
@@ -58,7 +66,7 @@ namespace ProsumentEneaItmTool.Tests.Model.DataBase
         [Test]
         public async Task AddOrUpdateData_ReimportOfSameFileDoesNotDuplicate()
         {
-            var updater = new EnergyDataUpdater(_dataContext);
+            var updater = new EnergyDataUpdater(_factory);
             var records = Enumerable.Range(0, 48)
                 .Select(h => Record(new DateTime(2024, 1, 1).AddHours(h), h))
                 .ToList();
@@ -72,8 +80,8 @@ namespace ProsumentEneaItmTool.Tests.Model.DataBase
         [Test]
         public async Task GetItemsByDateRanges_ReturnsRecordsOrderedByDate()
         {
-            var updater = new EnergyDataUpdater(_dataContext);
-            var extractor = new EnergyDataExtractor(_dataContext);
+            var updater = new EnergyDataUpdater(_factory);
+            var extractor = new EnergyDataExtractor(_factory);
             var day = new DateTime(2024, 1, 1);
 
             // Second import inserts earlier hours after later ones.
@@ -83,6 +91,17 @@ namespace ProsumentEneaItmTool.Tests.Model.DataBase
             var result = await extractor.GetItemsByDateRangesAsync(day, day);
 
             Assert.That(result.Select(x => x.Date), Is.Ordered);
+        }
+
+        [Test]
+        public async Task ClearAllData_RemovesEverything()
+        {
+            var updater = new EnergyDataUpdater(_factory);
+            await updater.AddOrUpdateDataAsync([Record(new DateTime(2024, 1, 1), 1)]);
+
+            await updater.ClearAllDataAsync();
+
+            Assert.That(await _dataContext.ImportedRecords.CountAsync(), Is.Zero);
         }
     }
 }

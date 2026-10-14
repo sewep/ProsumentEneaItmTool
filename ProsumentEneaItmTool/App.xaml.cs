@@ -1,5 +1,8 @@
-﻿using System.Windows;
+﻿using System.IO.Abstractions;
+using System.Windows;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using ProsumentEneaItmTool.Model.DataBase;
 using ProsumentEneaItmTool.UI;
 
 namespace ProsumentEneaItmTool
@@ -13,9 +16,29 @@ namespace ProsumentEneaItmTool
         {
             base.OnStartup(e);
 
+            var dataBasePath = DataBaseLocation.GetDefaultPath();
+
             var serviceProvider = new ServiceCollection()
-                .SetAppModules()
+                .SetAppModules(dataBasePath)
                 .BuildServiceProvider();
+
+            try
+            {
+                DataBaseLocation.Prepare(serviceProvider.GetRequiredService<IFileSystem>(), dataBasePath, DataBaseLocation.GetLegacyFolders());
+
+                using var dataContext = serviceProvider.GetRequiredService<IDbContextFactory<DataContext>>().CreateDbContext();
+                dataContext.Database.Migrate();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(
+                    $"Nie udało się otworzyć bazy danych:\r\n{dataBasePath}\r\n\r\n{ex}",
+                    "Błąd",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error);
+                Shutdown(1);
+                return;
+            }
 
             serviceProvider.GetRequiredService<MainWindow>().Show();
         }

@@ -1,4 +1,5 @@
 ﻿using System.IO.Abstractions;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using ProsumentEneaItmTool.Model.Calculations;
 using ProsumentEneaItmTool.Model.DataBase;
@@ -9,13 +10,12 @@ namespace ProsumentEneaItmTool
 {
     internal static class Services
     {
-        public static ServiceCollection SetAppModules(this ServiceCollection services)
+        public static ServiceCollection SetAppModules(this ServiceCollection services, string dataBasePath)
         {
             services.AddTransient<MainWindowVM>();
             services.AddTransient(s => new MainWindow() { DataContext = s.GetService<MainWindowVM>() });
 
-            services.AddDbContext<DataContext>();
-            services.AddSingleton<IDataContext>((s) => s.GetService<DataContext>()!);
+            services.AddDbContextFactory<DataContext>(options => options.UseSqlite($"Data Source={dataBasePath}"));
             services.AddTransient<IEnergyDataExtractor, EnergyDataExtractor>();
             services.AddTransient<IEnergyDataUpdater, EnergyDataUpdater>();
 

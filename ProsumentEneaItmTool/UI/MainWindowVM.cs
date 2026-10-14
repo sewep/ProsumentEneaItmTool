@@ -14,7 +14,7 @@ namespace ProsumentEneaItmTool.UI
         private readonly IEnergyDataUpdater _energyDataUpdater;
         private readonly IPowerCalculation _powerCalculation;
 
-        // The data context is shared, so database operations must not overlap.
+        // Database operations run one at a time, so an import is finished before the data is reloaded.
         private readonly SemaphoreSlim _dataBaseLock = new(1, 1);
 
         private DateTime _dateFrom;
