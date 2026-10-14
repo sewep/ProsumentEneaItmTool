@@ -6,7 +6,7 @@ namespace ProsumentEneaItmTool.Tests.Model.Calculations
     internal class PowerCalculationTests
     {
         [Test]
-        public void PowerCalculationTest_CorectDigitalResults()
+        public void PowerCalculationTest_CorrectTotals()
         {
             var records = new List<ImportFileRecord>() {
                 new() {
@@ -44,7 +44,7 @@ namespace ProsumentEneaItmTool.Tests.Model.Calculations
         }
 
         [Test]
-        public void PowerCalculationTest_CorectChartResults()
+        public void PowerCalculationTest_CorrectCumulativeChart()
         {
             var records = new List<ImportFileRecord>() {
                 new() {

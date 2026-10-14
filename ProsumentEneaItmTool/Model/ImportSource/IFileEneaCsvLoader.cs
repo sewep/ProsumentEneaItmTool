@@ -1,9 +1,10 @@
-﻿using ProsumentEneaItmTool.Domain;
-
-namespace ProsumentEneaItmTool.Model.ImportSource
+﻿namespace ProsumentEneaItmTool.Model.ImportSource
 {
     internal interface IFileEneaCsvLoader
     {
-        IEnumerable<ImportFileRecord> Load();
+        /// <summary>
+        /// Asks the user for a file and parses it. Returns null when the user cancels.
+        /// </summary>
+        ParseResult? Load();
     }
 }

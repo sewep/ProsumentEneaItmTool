@@ -5,6 +5,7 @@ using ProsumentEneaItmTool.Model.Calculations;
 using ProsumentEneaItmTool.Model.DataBase;
 using ProsumentEneaItmTool.Model.ImportSource;
 using ProsumentEneaItmTool.UI;
+using ProsumentEneaItmTool.UI.Utils;
 
 namespace ProsumentEneaItmTool
 {
@@ -14,6 +15,7 @@ namespace ProsumentEneaItmTool
         {
             services.AddTransient<MainWindowVM>();
             services.AddTransient(s => new MainWindow() { DataContext = s.GetService<MainWindowVM>() });
+            services.AddSingleton<IUserDialogs, MessageBoxUserDialogs>();
 
             services.AddDbContextFactory<DataContext>(options => options.UseSqlite($"Data Source={dataBasePath}"));
             services.AddTransient<IEnergyDataExtractor, EnergyDataExtractor>();

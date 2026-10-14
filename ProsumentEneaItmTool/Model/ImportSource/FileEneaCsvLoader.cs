@@ -1,6 +1,5 @@
 ﻿using System.IO.Abstractions;
 using Microsoft.Win32;
-using ProsumentEneaItmTool.Domain;
 
 namespace ProsumentEneaItmTool.Model.ImportSource
 {
@@ -13,7 +12,7 @@ namespace ProsumentEneaItmTool.Model.ImportSource
             _fileSystem = fileSystem;
         }
 
-        public IEnumerable<ImportFileRecord> Load()
+        public ParseResult? Load()
         {
             OpenFileDialog openFileDialog = new()
             {
@@ -25,12 +24,12 @@ namespace ProsumentEneaItmTool.Model.ImportSource
 
             if (openFileDialog.ShowDialog() == true)
             {
-                var fileContent = _fileSystem.File.ReadAllText(openFileDialog.FileName);
+                var fileContent = EneaCsvFileParser.Decode(_fileSystem.File.ReadAllBytes(openFileDialog.FileName));
 
                 return EneaCsvFileParser.Parse(fileContent);
             }
 
-            return [];
+            return null;
         }
     }
 }

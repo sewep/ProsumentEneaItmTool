@@ -15,7 +15,7 @@
     <DockPanel>
         <ScrollViewer DockPanel.Dock="Right" VerticalScrollBarVisibility="Auto" Margin="0,0,5,0">
             <StackPanel x:Name="RootStackPanel">
-                <Button Content="Importuj z pliku CSV" Command="{Binding LoadFromFile}" Margin="0,4"/>
+                <Button Content="Importuj z pliku CSV" Command="{Binding LoadFromFileCommand}" Margin="0,4"/>
                 <TextBlock Text="Importowane dane zostaną dołączone do już istniejących lub zostaną zaktualizowane."
                            TextWrapping="Wrap"
                            HorizontalAlignment="Stretch"
@@ -33,12 +33,12 @@
                     </Grid.RowDefinitions>
                     <Label Grid.Column="0" Content="Od"/>
                     <Label Grid.Column="1" Content="Do"/>
-                    <DatePicker Grid.Row="1" Grid.Column="0" SelectedDate="{Binding DateFrom}" Language="pl-PL"/>
-                    <DatePicker Grid.Row="1" Grid.Column="1" SelectedDate="{Binding DateTo}" Language="pl-PL"/>
+                    <DatePicker Grid.Row="1" Grid.Column="0" SelectedDate="{Binding DateFrom}"/>
+                    <DatePicker Grid.Row="1" Grid.Column="1" SelectedDate="{Binding DateTo}"/>
                 </Grid>
 
-                <Button Content="Rok wstecz" Margin="0,3,0,0" Command="{Binding SetLastYear}"/>
-                <Button Content="Ustaw cały wprowadzony okres" Margin="0,3,0,0" Command="{Binding SetEntireEnteredTimePeriod}"/>
+                <Button Content="Rok wstecz" Margin="0,3,0,0" Command="{Binding SetLastYearCommand}"/>
+                <Button Content="Ustaw cały wprowadzony okres" Margin="0,3,0,0" Command="{Binding SetEntireEnteredTimePeriodCommand}"/>
 
                 <Grid Margin="0,5,0,5">
                     <Grid.ColumnDefinitions>
@@ -49,7 +49,8 @@
                     <TextBox Grid.Column="1"
                              HorizontalContentAlignment="Center"
                              VerticalContentAlignment="Center"
-                             Text="{Binding FreeEnergyCoefficient, StringFormat={}{0:F02}, UpdateSourceTrigger=PropertyChanged}" />
+                             Text="{Binding FreeEnergyCoefficient, StringFormat={}{0:F02}, UpdateSourceTrigger=PropertyChanged, ValidatesOnExceptions=True}"
+                             ToolTip="{Binding RelativeSource={RelativeSource Self}, Path=(Validation.Errors)[0].ErrorContent}" />
                 </Grid>
                 
                 <Grid Background="LightGoldenrodYellow" Margin="0,15,0,0">
@@ -94,7 +95,7 @@
                     <Label Grid.Column="2" Grid.Row="4" Content="{Binding CalculationEnergyResults.FreeToUseAfterBalancing, FallbackValue=000}" Style="{StaticResource DigitalValue}" Foreground="Purple"/>
                 </Grid>
 
-                <Button Content="Usuń wszystkie dane" Command="{Binding ClearAllData}" Margin="0,15,0,0"/>
+                <Button Content="Usuń wszystkie dane" Command="{Binding ClearAllDataCommand}" Margin="0,15,0,0"/>
             </StackPanel>
         </ScrollViewer>
 
@@ -102,7 +103,6 @@
             <customcontrols:Charts Calculations="{Binding PowerCalculation}" Margin="5" Padding="20,0,0,0"/>
             <Border Background="#66222222" Visibility="{Binding IsBusy, Converter={StaticResource BoolToVis}}">
                 <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
-                    <Label Content="Ładowanie" Visibility="Collapsed"/>
                     <customcontrols:LoadingSpinner Width="50" Height="50"/>
                 </StackPanel>
             </Border>

@@ -1,63 +1,81 @@
 ﻿using System.Globalization;
+using System.IO;
 using System.Text;
-using System.Windows;
 using ProsumentEneaItmTool.Domain;
 
 namespace ProsumentEneaItmTool.Model.ImportSource
 {
-    internal class EneaCsvFileParser
+    internal record ParseResult(IReadOnlyList<ImportFileRecord> Records, IReadOnlyList<string> Warnings);
+
+    internal static class EneaCsvFileParser
     {
-        private static readonly string[] _dateFormat = { "yyyy.MM.dd HH:mm:ss", "yyyy-MM-dd HH:mm" };
+        private static readonly string[] _dateFormats = ["yyyy.MM.dd HH:mm:ss", "yyyy-MM-dd HH:mm:ss", "yyyy-MM-dd HH:mm"];
         private static readonly CultureInfo _culture = new("pl-PL");
 
-        public static IEnumerable<ImportFileRecord> Parse(string data)
+        /// <summary>
+        /// Decodes file content. Enea reports are saved in UTF-8 or in UTF-16, sometimes without BOM.
+        /// </summary>
+        public static string Decode(byte[] content)
+        {
+            ArgumentNullException.ThrowIfNull(content);
+
+            using var reader = new StreamReader(new MemoryStream(content), LooksLikeUtf16(content) ? Encoding.Unicode : Encoding.UTF8, detectEncodingFromByteOrderMarks: true);
+            return reader.ReadToEnd();
+        }
+
+        public static ParseResult Parse(string data)
         {
             ArgumentNullException.ThrowIfNull(data);
 
-            var result = new List<ImportFileRecord>();
+            var records = new List<ImportFileRecord>();
+            var warnings = new List<string>();
 
-            data = ClearFromUnwantedChars(data);
-
-            var rows = data.Split('\n').ToList();
-
-            rows.RemoveAt(0);
-
-            var parseWarnings = new StringBuilder();
+            // The first row is a header.
+            var rows = ClearFromUnwantedChars(data)
+                .Split('\n')
+                .Skip(1);
 
             foreach (var row in rows)
             {
-                // Remove some strange strings from report.
-                var rowClened = row.Replace("=", "");
+                // Some reports have cells like ="value".
+                var cells = row
+                    .Replace("=", "")
+                    .Split(';')
+                    .Select(c => c.Trim())
+                    .ToArray();
 
-
-                var cells = rowClened.Split(';');
-
-                try
+                if (cells.Any(string.IsNullOrEmpty) || cells.Any(c => c.Contains("---")))
                 {
-
-                    if (cells.Any(c => string.IsNullOrEmpty(c) || c!.Contains("---")))
-                    {
-                        continue;
-                    }
-
-                    result.Add(CellsToRecord(cells));
+                    continue;
                 }
-                catch (Exception e)
+
+                if (TryCellsToRecord(cells, out var record))
                 {
-                    parseWarnings.AppendLine($"Not parsed row: {row}");
+                    records.Add(record);
+                }
+                else
+                {
+                    warnings.Add(row.Trim());
                 }
             }
 
-            if (parseWarnings.Length > 0)
+            return new ParseResult(records, warnings);
+        }
+
+        private static bool LooksLikeUtf16(byte[] content)
+        {
+            // ASCII text in UTF-16 LE has every second byte equal to zero.
+            var sample = content.AsSpan(0, Math.Min(content.Length, 200));
+            var zeros = 0;
+            for (var i = 1; i < sample.Length; i += 2)
             {
-                MessageBox.Show(
-                    "Problem z pasrowaniem rekordów: \r\n" + parseWarnings.ToString(),
-                    "Uwagi",
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Warning);
+                if (sample[i] == 0)
+                {
+                    zeros++;
+                }
             }
 
-            return result;
+            return sample.Length >= 2 && zeros > sample.Length / 4;
         }
 
         private static string ClearFromUnwantedChars(string data)
@@ -67,30 +85,55 @@ namespace ProsumentEneaItmTool.Model.ImportSource
                 .Replace("\"", "");
         }
 
-        private static DateTime TryParseDate(string dateTime)
+        private static bool TryParseDate(string dateTime, out DateTime date)
         {
-            foreach (var format in _dateFormat)
+            foreach (var format in _dateFormats)
             {
+                // The date can be followed by additional text, so only the beginning is taken.
                 var candidate = dateTime[..Math.Min(format.Length, dateTime.Length)];
-                if (DateTime.TryParse(candidate, CultureInfo.InvariantCulture, out var date))
+                if (DateTime.TryParseExact(candidate, format, CultureInfo.InvariantCulture, DateTimeStyles.None, out date))
                 {
-                    return date;
+                    return true;
                 }
             }
 
-            throw new ArgumentException($"Can't parse date time {dateTime}.");
+            // Lenient fallback, which older versions used for all reports.
+            foreach (var format in _dateFormats)
+            {
+                var candidate = dateTime[..Math.Min(format.Length, dateTime.Length)];
+                if (DateTime.TryParse(candidate, CultureInfo.InvariantCulture, out date))
+                {
+                    return true;
+                }
+            }
+
+            date = default;
+            return false;
         }
 
-        private static ImportFileRecord CellsToRecord(string[] cells)
+        private static bool TryCellsToRecord(string[] cells, out ImportFileRecord record)
         {
-            return new ImportFileRecord()
+            record = new ImportFileRecord();
+
+            if (cells.Length < 5 || !TryParseDate(cells[0], out var date))
             {
-                Date = TryParseDate(cells[0]),
-                TakenVolumeBeforeBanancing = double.Parse(cells[1], _culture),
-                FedVolumeBeforeBanancing = double.Parse(cells[2], _culture),
-                TakenVolumeAfterBanancing = double.Parse(cells[3], _culture),
-                FedVolumeAfterBanancing = double.Parse(cells[4], _culture)
-            };
+                return false;
+            }
+
+            if (!double.TryParse(cells[1], NumberStyles.Float | NumberStyles.AllowThousands, _culture, out var takenBefore)
+                || !double.TryParse(cells[2], NumberStyles.Float | NumberStyles.AllowThousands, _culture, out var fedBefore)
+                || !double.TryParse(cells[3], NumberStyles.Float | NumberStyles.AllowThousands, _culture, out var takenAfter)
+                || !double.TryParse(cells[4], NumberStyles.Float | NumberStyles.AllowThousands, _culture, out var fedAfter))
+            {
+                return false;
+            }
+
+            record.Date = date;
+            record.TakenVolumeBeforeBanancing = takenBefore;
+            record.FedVolumeBeforeBanancing = fedBefore;
+            record.TakenVolumeAfterBanancing = takenAfter;
+            record.FedVolumeAfterBanancing = fedAfter;
+            return true;
         }
     }
 }

@@ -91,8 +91,8 @@ namespace ProsumentEneaItmTool.UI.CustomControls
             var plot = WpfPlot.Plot;
             _scatters = new List<GraphFlow>()
             {
-                new(plot, dates, takenAB, "Pob. po b.", Color.FromARGB(0xffff0000), "{0:yyyy.MM.dd}, Wolumin pobranej energii = {1:F0} kWh"),
-                new(plot, dates, fedAB, "Wys. po b.", Color.FromARGB(0xff00bb00), "{0:yyyy.MM.dd}, Wolumin wysłanej energii = {1:F0} kWh"),
+                new(plot, dates, takenAB, "Pob. po b.", Color.FromARGB(0xffff0000), "{0:yyyy.MM.dd}, Wolumen pobranej energii = {1:F0} kWh"),
+                new(plot, dates, fedAB, "Wys. po b.", Color.FromARGB(0xff00bb00), "{0:yyyy.MM.dd}, Wolumen wysłanej energii = {1:F0} kWh"),
                 new(plot, dates, diffAB, "Różnica po b.", Color.FromARGB(0xff0000ff), "{0:yyyy.MM.dd}, Różnica energii jeden do jeden = {1:F0} kWh"),
                 new(plot, dates, diffABn, "Netto po b.", Color.FromARGB(0xffff00ff), "{0:yyyy.MM.dd}, Energia do wykorzystania = {1:F0} kWh"),
             };
@@ -133,7 +133,7 @@ namespace ProsumentEneaItmTool.UI.CustomControls
             }
 
             var plot = WpfPlot.Plot;
-            Coordinates mouseLocation = GetMouseCursorPositon(e, plot);
+            Coordinates mouseLocation = GetMouseCursorPosition(e, plot);
 
             bool showCross = false;
             string pointDetails = string.Empty;
@@ -153,7 +153,7 @@ namespace ProsumentEneaItmTool.UI.CustomControls
             WpfPlot.Refresh();
         }
 
-        private Coordinates GetMouseCursorPositon(MouseEventArgs e, Plot plot)
+        private Coordinates GetMouseCursorPosition(MouseEventArgs e, Plot plot)
         {
             PresentationSource source = PresentationSource.FromVisual(this);
             double dpiXsc = 1;

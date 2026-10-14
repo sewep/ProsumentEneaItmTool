@@ -1,5 +1,7 @@
-﻿using System.IO.Abstractions;
+﻿using System.Globalization;
+using System.IO.Abstractions;
 using System.Windows;
+using System.Windows.Markup;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using ProsumentEneaItmTool.Model.DataBase;
@@ -12,9 +14,20 @@ namespace ProsumentEneaItmTool
     /// </summary>
     public partial class App : Application
     {
+        private static readonly CultureInfo _appCulture = new("pl-PL");
+
         protected override void OnStartup(StartupEventArgs e)
         {
             base.OnStartup(e);
+
+            // Polish number and date formats regardless of the Windows settings, also in bindings.
+            CultureInfo.DefaultThreadCurrentCulture = _appCulture;
+            CultureInfo.DefaultThreadCurrentUICulture = _appCulture;
+            CultureInfo.CurrentCulture = _appCulture;
+            CultureInfo.CurrentUICulture = _appCulture;
+            FrameworkElement.LanguageProperty.OverrideMetadata(
+                typeof(FrameworkElement),
+                new FrameworkPropertyMetadata(XmlLanguage.GetLanguage(_appCulture.IetfLanguageTag)));
 
             var dataBasePath = DataBaseLocation.GetDefaultPath();
 

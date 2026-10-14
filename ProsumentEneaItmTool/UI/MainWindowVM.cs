@@ -1,18 +1,22 @@
-﻿using System.Windows;
-using System.Windows.Input;
+﻿using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 using ProsumentEneaItmTool.Domain;
 using ProsumentEneaItmTool.Model.Calculations;
 using ProsumentEneaItmTool.Model.DataBase;
 using ProsumentEneaItmTool.Model.ImportSource;
+using ProsumentEneaItmTool.UI.Utils;
 
 namespace ProsumentEneaItmTool.UI
 {
-    internal class MainWindowVM : ObservedObject
+    internal class MainWindowVM : ObservableObject
     {
+        private const int MaxWarningRowsShown = 20;
+
         private readonly IFileEneaCsvLoader _fileEneaCsvLoader;
         private readonly IEnergyDataExtractor _energyDataExtractor;
         private readonly IEnergyDataUpdater _energyDataUpdater;
         private readonly IPowerCalculation _powerCalculation;
+        private readonly IUserDialogs _userDialogs;
 
         // Database operations run one at a time, so an import is finished before the data is reloaded.
         private readonly SemaphoreSlim _dataBaseLock = new(1, 1);
@@ -26,38 +30,62 @@ namespace ProsumentEneaItmTool.UI
         public MainWindowVM(IFileEneaCsvLoader fileEneaCsvLoader,
                             IEnergyDataExtractor energyDataExtractor,
                             IEnergyDataUpdater energyDataUpdater,
-                            IPowerCalculation powerCalculation)
+                            IPowerCalculation powerCalculation,
+                            IUserDialogs userDialogs)
         {
             _fileEneaCsvLoader = fileEneaCsvLoader;
             _energyDataExtractor = energyDataExtractor;
             _energyDataUpdater = energyDataUpdater;
             _powerCalculation = powerCalculation;
+            _userDialogs = userDialogs;
 
-            LoadFromFile = new RelayCommand(async _ => await LoadFromFileAsync(), _ => !IsBusy);
-            ClearAllData = new RelayCommand(async _ => await RunAsync(ClearAllDataAsync), _ => !IsBusy);
-            SetLastYear = new RelayCommand(async _ => await RunAsync(SetLastYearAsync), _ => !IsBusy);
-            SetEntireEnteredTimePeriod = new RelayCommand(async _ => await RunAsync(SelectFullDateRangesAsync), _ => !IsBusy);
+            LoadFromFileCommand = new AsyncRelayCommand(LoadFromFileAsync, () => !IsBusy);
+            ClearAllDataCommand = new AsyncRelayCommand(ClearAllDataAsync, () => !IsBusy);
+            SetLastYearCommand = new AsyncRelayCommand(() => RunAsync(SetLastYearAsync), () => !IsBusy);
+            SetEntireEnteredTimePeriodCommand = new AsyncRelayCommand(() => RunAsync(SelectFullDateRangesAsync), () => !IsBusy);
 
-            _ = RunAsync(SelectFullDateRangesAsync);
+            Initialization = RunAsync(SelectFullDateRangesAsync);
         }
+
+        /// <summary>
+        /// Loading of the initial data started in the constructor.
+        /// </summary>
+        public Task Initialization { get; }
 
         public DateTime DateFrom
         {
             get => _dateFrom;
             set
             {
-                _dateFrom = value;
-                OnPropertyChanged();
+                if (!SetProperty(ref _dateFrom, value))
+                {
+                    return;
+                }
+
+                if (_dateTo < _dateFrom)
+                {
+                    SetProperty(ref _dateTo, _dateFrom, nameof(DateTo));
+                }
+
                 _ = RunAsync(UseSelectedRangeAsync);
             }
         }
+
         public DateTime DateTo
         {
             get => _dateTo;
             set
             {
-                _dateTo = value;
-                OnPropertyChanged();
+                if (!SetProperty(ref _dateTo, value))
+                {
+                    return;
+                }
+
+                if (_dateFrom > _dateTo)
+                {
+                    SetProperty(ref _dateFrom, _dateTo, nameof(DateFrom));
+                }
+
                 _ = RunAsync(UseSelectedRangeAsync);
             }
         }
@@ -71,6 +99,17 @@ namespace ProsumentEneaItmTool.UI
             get => _powerCalculation.FreeEnergyCoefficient;
             set
             {
+                // The binding shows the exception message as a validation error.
+                if (value is < 0 or > 1)
+                {
+                    throw new ArgumentOutOfRangeException(nameof(value), "Współczynnik musi być z zakresu od 0 do 1.");
+                }
+
+                if (_powerCalculation.FreeEnergyCoefficient == value)
+                {
+                    return;
+                }
+
                 _powerCalculation.FreeEnergyCoefficient = value;
                 OnPropertyChanged();
                 Recalculate();
@@ -82,7 +121,7 @@ namespace ProsumentEneaItmTool.UI
         public List<ImportFileRecord> Records
         {
             get => _records;
-            set
+            private set
             {
                 _records = value;
                 OnPropertyChanged();
@@ -90,43 +129,61 @@ namespace ProsumentEneaItmTool.UI
             }
         }
 
-        public ICommand LoadFromFile { get; }
+        public IAsyncRelayCommand LoadFromFileCommand { get; }
 
-        public ICommand ClearAllData { get; }
+        public IAsyncRelayCommand ClearAllDataCommand { get; }
 
-        public ICommand SetLastYear { get; }
+        public IAsyncRelayCommand SetLastYearCommand { get; }
 
-        public ICommand SetEntireEnteredTimePeriod { get; }
+        public IAsyncRelayCommand SetEntireEnteredTimePeriodCommand { get; }
 
         private async Task LoadFromFileAsync()
         {
-            List<ImportFileRecord> list;
+            ParseResult? parseResult;
             try
             {
-                list = _fileEneaCsvLoader.Load().ToList();
+                parseResult = _fileEneaCsvLoader.Load();
             }
             catch (Exception e)
             {
-                ShowError(e);
+                _userDialogs.ShowError($"Nie udało się wczytać pliku.\r\n\r\n{e.Message}");
                 return;
             }
 
-            if (list.Count == 0)
+            if (parseResult is null)
+            {
+                return;
+            }
+
+            if (parseResult.Warnings.Count > 0)
+            {
+                ShowParseWarnings(parseResult);
+            }
+
+            if (parseResult.Records.Count == 0)
             {
                 return;
             }
 
             await RunAsync(async () =>
             {
-                await RunDataBaseAsync(() => _energyDataUpdater.AddOrUpdateDataAsync(list));
+                await RunDataBaseAsync(() => _energyDataUpdater.AddOrUpdateDataAsync(parseResult.Records.ToList()));
                 await SelectFullDateRangesAsync();
             });
         }
 
         private async Task ClearAllDataAsync()
         {
-            await RunDataBaseAsync(_energyDataUpdater.ClearAllDataAsync);
-            await SelectFullDateRangesAsync();
+            if (!_userDialogs.Confirm("Czy na pewno usunąć wszystkie zaimportowane dane?\r\n\r\nTej operacji nie można cofnąć."))
+            {
+                return;
+            }
+
+            await RunAsync(async () =>
+            {
+                await RunDataBaseAsync(_energyDataUpdater.ClearAllDataAsync);
+                await SelectFullDateRangesAsync();
+            });
         }
 
         private async Task SetLastYearAsync()
@@ -160,15 +217,26 @@ namespace ProsumentEneaItmTool.UI
         /// </summary>
         private void SetDateRange(DateTime dateFrom, DateTime dateTo)
         {
-            _dateFrom = dateFrom;
-            _dateTo = dateTo;
-            OnPropertyChanged(nameof(DateFrom), nameof(DateTo));
+            SetProperty(ref _dateFrom, dateFrom, nameof(DateFrom));
+            SetProperty(ref _dateTo, dateTo, nameof(DateTo));
         }
 
         private void Recalculate()
         {
             _powerCalculation.Calculate(_records);
             OnPropertyChanged(nameof(CalculationEnergyResults));
+        }
+
+        private void ShowParseWarnings(ParseResult parseResult)
+        {
+            var rows = string.Join("\r\n", parseResult.Warnings.Take(MaxWarningRowsShown));
+            var more = parseResult.Warnings.Count > MaxWarningRowsShown
+                ? $"\r\n… i {parseResult.Warnings.Count - MaxWarningRowsShown} więcej."
+                : string.Empty;
+
+            _userDialogs.ShowWarning(
+                $"Nie udało się odczytać {parseResult.Warnings.Count} wierszy, zostaną pominięte. " +
+                $"Poprawnie odczytano {parseResult.Records.Count} rekordów.\r\n\r\n{rows}{more}");
         }
 
         /// <summary>
@@ -208,7 +276,7 @@ namespace ProsumentEneaItmTool.UI
             }
             catch (Exception e)
             {
-                ShowError(e);
+                _userDialogs.ShowError(e.ToString());
             }
             finally
             {
@@ -220,12 +288,11 @@ namespace ProsumentEneaItmTool.UI
         {
             _isBusyCounter += busy ? 1 : -1;
             OnPropertyChanged(nameof(IsBusy));
-            CommandManager.InvalidateRequerySuggested();
-        }
 
-        private static void ShowError(Exception e)
-        {
-            MessageBox.Show(e.ToString(), "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            LoadFromFileCommand?.NotifyCanExecuteChanged();
+            ClearAllDataCommand?.NotifyCanExecuteChanged();
+            SetLastYearCommand?.NotifyCanExecuteChanged();
+            SetEntireEnteredTimePeriodCommand?.NotifyCanExecuteChanged();
         }
     }
 }
