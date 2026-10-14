@@ -3,12 +3,13 @@ using System.IO.Abstractions;
 using System.Text;
 using ProsumentEneaItmTool.Domain;
 using ProsumentEneaItmTool.Model.Calculations;
+using ProsumentEneaItmTool.Model.NetBilling;
 
 namespace ProsumentEneaItmTool.Model.Export
 {
     internal interface ICsvExporter
     {
-        void Export(string filePath, IPowerCalculation calculation);
+        void Export(string filePath, IPowerCalculation calculation, NetBillingResult? netBilling);
     }
 
     /// <summary>
@@ -25,13 +26,14 @@ namespace ProsumentEneaItmTool.Model.Export
             _fileSystem = fileSystem;
         }
 
-        public void Export(string filePath, IPowerCalculation calculation)
+        public void Export(string filePath, IPowerCalculation calculation, NetBillingResult? netBilling)
         {
             // BOM, so Excel recognizes UTF-8 and shows Polish letters.
-            _fileSystem.File.WriteAllText(filePath, BuildCsv(calculation), new UTF8Encoding(true));
+            _fileSystem.File.WriteAllText(filePath, BuildCsv(calculation, netBilling), new UTF8Encoding(true));
         }
 
-        public static string BuildCsv(IPowerCalculation calculation)
+        /// <param name="netBilling">Values calculated with the same aggregation, added as extra columns.</param>
+        public static string BuildCsv(IPowerCalculation calculation, NetBillingResult? netBilling = null)
         {
             var coefficient = calculation.FreeEnergyCoefficient.ToString("0.00", _culture);
             var dateFormat = calculation.Aggregation switch
@@ -42,7 +44,8 @@ namespace ProsumentEneaItmTool.Model.Export
             };
 
             var csv = new StringBuilder();
-            csv.AppendLine(string.Join(";",
+            var header = new List<string>
+            {
                 "Okres",
                 "Pobrana przed bil. [kWh]",
                 "Wysłana przed bil. [kWh]",
@@ -53,7 +56,18 @@ namespace ProsumentEneaItmTool.Model.Export
                 "Pobrana po bil. narastająco [kWh]",
                 "Wysłana po bil. narastająco [kWh]",
                 "Różnica po bil. narastająco [kWh]",
-                $"Po opuście ({coefficient}) po bil. narastająco [kWh]"));
+                $"Po opuście ({coefficient}) po bil. narastająco [kWh]"
+            };
+
+            if (netBilling is not null)
+            {
+                header.AddRange(["Net-billing: wartość wg RCE [zł]", "Net-billing: bez ceny RCE [kWh]", "Net-billing: wartość wg RCEm [zł]", "Net-billing: bez ceny RCEm [kWh]"]);
+            }
+
+            csv.AppendLine(string.Join(";", header));
+
+            // A repeated hour (DST change) is one net-billing period, it is written to the first of the two rows.
+            var netBillingPeriods = netBilling?.Periods.ToDictionary(x => x.Time) ?? [];
 
             var periods = calculation.PeriodResults;
             var cumulative = calculation.CalculationEnergyChart;
@@ -63,7 +77,8 @@ namespace ProsumentEneaItmTool.Model.Export
                 var period = periods[i];
                 var total = cumulative[i];
 
-                csv.AppendLine(string.Join(";",
+                var row = new List<string>
+                {
                     period.Time.ToString(dateFormat, CultureInfo.InvariantCulture),
                     Format(period.ConsumedBeforeBalancing),
                     Format(period.FedBeforeBalancing),
@@ -74,11 +89,28 @@ namespace ProsumentEneaItmTool.Model.Export
                     Format(total.ConsumedAfterBalancing),
                     Format(total.FedAfterBalancing),
                     Format(total.DifferenceAfterBalancing),
-                    Format(total.FreeToUseAfterBalancing)));
+                    Format(total.FreeToUseAfterBalancing)
+                };
+
+                if (netBilling is not null)
+                {
+                    if (netBillingPeriods.Remove(period.Time, out var nb))
+                    {
+                        row.AddRange([FormatMoney(nb.ValueRce), Format(nb.FedWithoutRceKwh), FormatMoney(nb.ValueRcem), Format(nb.FedWithoutRcemKwh)]);
+                    }
+                    else
+                    {
+                        row.AddRange(["", "", "", ""]);
+                    }
+                }
+
+                csv.AppendLine(string.Join(";", row));
             }
 
             return csv.ToString();
         }
+
+        private static string FormatMoney(double value) => Math.Round(value, 2, MidpointRounding.AwayFromZero).ToString("0.00", _culture);
 
         private static string Format(double value)
         {

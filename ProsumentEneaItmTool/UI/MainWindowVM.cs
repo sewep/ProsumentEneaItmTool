@@ -35,7 +35,8 @@ namespace ProsumentEneaItmTool.UI
                             IEnergyDataUpdater energyDataUpdater,
                             IPowerCalculation powerCalculation,
                             IUserDialogs userDialogs,
-                            ICsvExporter csvExporter)
+                            ICsvExporter csvExporter,
+                            NetBillingVM netBilling)
         {
             _fileEneaCsvLoader = fileEneaCsvLoader;
             _energyDataExtractor = energyDataExtractor;
@@ -43,6 +44,7 @@ namespace ProsumentEneaItmTool.UI
             _powerCalculation = powerCalculation;
             _userDialogs = userDialogs;
             _csvExporter = csvExporter;
+            NetBilling = netBilling;
 
             // A year of hourly data is easier to read and faster to draw by days.
             _powerCalculation.Aggregation = Aggregation.Day;
@@ -129,6 +131,8 @@ namespace ProsumentEneaItmTool.UI
         public IPowerCalculation PowerCalculation => _powerCalculation;
 
         public ChartOptions ChartOptions { get; } = new();
+
+        public NetBillingVM NetBilling { get; }
 
         public Aggregation Aggregation
         {
@@ -227,7 +231,7 @@ namespace ProsumentEneaItmTool.UI
 
             try
             {
-                _csvExporter.Export(filePath, _powerCalculation);
+                _csvExporter.Export(filePath, _powerCalculation, NetBilling.CalculateFor(Aggregation));
             }
             catch (Exception e)
             {
@@ -272,6 +276,7 @@ namespace ProsumentEneaItmTool.UI
             if (requestId == _recordsRequestId)
             {
                 Records = records;
+                await NetBilling.UpdateAsync(records, DateFrom, DateTo);
             }
         }
 

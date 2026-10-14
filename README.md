@@ -14,6 +14,16 @@ Aplikacja dla prosumentów Enea do analizy energii wysłanej do sieci i pobranej
 
 Importowane dane są dopisywane do już zapisanych. Godziny, które już są w bazie, zostają zastąpione danymi z nowego pliku, więc ten sam plik można wczytać ponownie bez dublowania danych.
 
+## Net-billing
+
+Zakładka **Net-billing (RCE / RCEm)** szacuje wartość energii oddanej do sieci (po bilansowaniu godzinowym), która trafia do depozytu prosumenckiego: energia × cena × współczynnik depozytu (domyślnie 1,23), ceny ujemne liczone jako zero.
+
+- **RCE (godzinowa)** – przycisk *Pobierz ceny RCE z PSE* pobiera ceny z publicznego API PSE (`api.raporty.pse.pl`, raport `rce-pln`) dla wybranego zakresu dat. Pobierane są tylko brakujące dni; ceny zostają w bazie. PSE publikuje je od 14.06.2024, więc wcześniejsza energia nie jest wyceniana. Ceny 15-minutowe są uśredniane do pełnych godzin, bo dane Enea są godzinowe.
+- **RCEm (miesięczna)** – PSE nie udostępnia jej w API; wpisz ją w tabeli miesięcy (kolumna ✎, zł/MWh) z publikacji PSE.
+- Kolumna **RCE − RCEm** porównuje obie metody tylko tam, gdzie są obie ceny – przydatne przy decyzji o (nieodwracalnym) przejściu na rozliczenie godzinowe.
+
+To szacunek: depozyt pokrywa tylko opłaty za energię, jest ważny 12 miesięcy, a szczegóły rozliczenia zależą od umowy ze sprzedawcą.
+
 ## Instalacja
 
 Pobierz najnowsze wydanie z zakładki [Releases](https://github.com/sewep/ProsumentEneaItmTool/releases):

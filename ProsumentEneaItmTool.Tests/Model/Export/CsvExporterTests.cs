@@ -3,6 +3,7 @@ using System.Text;
 using ProsumentEneaItmTool.Domain;
 using ProsumentEneaItmTool.Model.Calculations;
 using ProsumentEneaItmTool.Model.Export;
+using ProsumentEneaItmTool.Model.NetBilling;
 
 namespace ProsumentEneaItmTool.Tests.Model.Export
 {
@@ -39,12 +40,35 @@ namespace ProsumentEneaItmTool.Tests.Model.Export
         }
 
         [Test]
+        public void BuildCsv_AddsNetBillingColumns()
+        {
+            var netBilling = new NetBillingResult
+            {
+                Periods =
+                [
+                    new NetBillingPeriod { Time = new DateTime(2024, 2, 1), FedKwh = 25.125, FedWithRceKwh = 25.125, ValueRce = 12.346, FedWithRcemKwh = 0, ValueRcem = 0 },
+                ]
+            };
+
+            var lines = CsvExporter.BuildCsv(CalculateMonthly(), netBilling)
+                .Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries);
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(lines[0], Does.EndWith(";Net-billing: wartość wg RCE [zł];Net-billing: bez ceny RCE [kWh];Net-billing: wartość wg RCEm [zł];Net-billing: bez ceny RCEm [kWh]"));
+                // January has no net-billing values, February has RCE only.
+                Assert.That(lines[1], Does.EndWith(";;;;"));
+                Assert.That(lines[2], Does.EndWith(";12,35;0;0,00;25,125"));
+            });
+        }
+
+        [Test]
         public void Export_WritesUtf8FileWithBom()
         {
             var fileSystem = new MockFileSystem();
             fileSystem.AddDirectory(@"C:\eksport");
 
-            new CsvExporter(fileSystem).Export(@"C:\eksport\dane.csv", CalculateMonthly());
+            new CsvExporter(fileSystem).Export(@"C:\eksport\dane.csv", CalculateMonthly(), null);
 
             var bytes = fileSystem.File.ReadAllBytes(@"C:\eksport\dane.csv");
             Assert.Multiple(() =>

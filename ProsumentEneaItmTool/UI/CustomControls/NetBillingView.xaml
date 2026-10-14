@@ -1,0 +1,94 @@
+﻿<UserControl x:Class="ProsumentEneaItmTool.UI.CustomControls.NetBillingView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:ui="clr-namespace:ProsumentEneaItmTool.UI"
+             xmlns:ScottPlot="clr-namespace:ScottPlot.WPF;assembly=ScottPlot.WPF"
+             d:DataContext="{d:DesignInstance Type=ui:NetBillingVM}"
+             mc:Ignorable="d"
+             d:DesignHeight="500" d:DesignWidth="700">
+    <UserControl.Resources>
+        <Style TargetType="Label" x:Key="SummaryValue">
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="HorizontalContentAlignment" Value="Right"/>
+        </Style>
+    </UserControl.Resources>
+    <DockPanel Margin="5">
+        <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,5">
+            <Button Content="Pobierz ceny RCE z PSE" Command="{Binding DownloadRcePricesCommand}" Padding="8,2"
+                    ToolTip="Pobiera godzinowe ceny RCE dla wybranego zakresu dat (tylko brakujące dni) z api.raporty.pse.pl"/>
+            <Label Content="Współczynnik depozytu" Margin="15,0,0,0"/>
+            <TextBox Width="50" VerticalContentAlignment="Center" HorizontalContentAlignment="Center"
+                     Text="{Binding DepositCoefficient, StringFormat={}{0:F02}, UpdateSourceTrigger=PropertyChanged, ValidatesOnExceptions=True}"
+                     ToolTip="Wartość energii oddanej zwiększana przy naliczaniu depozytu prosumenckiego (od zmiany ustawy o OZE: 1,23)"/>
+        </StackPanel>
+
+        <TextBlock DockPanel.Dock="Top" Text="{Binding Status}" Margin="2,0,0,5" Foreground="Gray" TextWrapping="Wrap"/>
+
+        <Grid DockPanel.Dock="Top" Background="LightGoldenrodYellow" Margin="0,0,0,5">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="auto"/>
+                <ColumnDefinition Width="110"/>
+                <ColumnDefinition Width="auto"/>
+                <ColumnDefinition Width="110"/>
+                <ColumnDefinition Width="auto"/>
+                <ColumnDefinition Width="110"/>
+            </Grid.ColumnDefinitions>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="auto"/>
+                <RowDefinition Height="auto"/>
+            </Grid.RowDefinitions>
+            <Label Content="Oddana po bil. [kWh]"/>
+            <Label Grid.Column="1" Content="{Binding Result.Total.FedKwh}" ContentStringFormat="N0" Style="{StaticResource SummaryValue}"/>
+            <Label Grid.Column="2" Content="Wartość wg RCE [zł]"/>
+            <Label Grid.Column="3" Content="{Binding TotalValueRce}" ContentStringFormat="N2" Style="{StaticResource SummaryValue}" Foreground="DarkOrange"/>
+            <Label Grid.Column="4" Content="Wartość wg RCEm [zł]"/>
+            <Label Grid.Column="5" Content="{Binding TotalValueRcem, TargetNullValue='–'}" ContentStringFormat="N2" Style="{StaticResource SummaryValue}" Foreground="Teal"/>
+            <Label Grid.Row="1" Content="Śr. cena RCE ważona [zł/MWh]"
+                   ToolTip="Ceny RCE ważone energią oddaną w każdej godzinie, ceny ujemne jako zero, bez współczynnika depozytu"/>
+            <Label Grid.Row="1" Grid.Column="1" Content="{Binding Result.Total.WeightedRcePlnMwh}" ContentStringFormat="N2" Style="{StaticResource SummaryValue}"/>
+            <Label Grid.Row="1" Grid.Column="2" Content="RCE − RCEm [zł]"
+                   ToolTip="Różnica policzona tylko dla miesięcy, w których są obie ceny. Dodatnia: rozliczenie godzinowe (RCE) dałoby więcej."/>
+            <Label Grid.Row="1" Grid.Column="3" Content="{Binding TotalDifferenceRceMinusRcem, TargetNullValue='–'}" ContentStringFormat="N2" Style="{StaticResource SummaryValue}"/>
+            <Label Grid.Row="1" Grid.Column="4" Content="Bez ceny RCE [kWh]"/>
+            <Label Grid.Row="1" Grid.Column="5" Content="{Binding Result.Total.FedWithoutRceKwh}" ContentStringFormat="N0" Style="{StaticResource SummaryValue}"/>
+        </Grid>
+
+        <TextBlock DockPanel.Dock="Bottom" TextWrapping="Wrap" FontSize="10" Foreground="Gray" Margin="0,5,0,0"
+                   Text="Szacunek wartości energii oddanej do sieci (po bilansowaniu godzinowym), która trafia do depozytu prosumenckiego: energia × cena × współczynnik, ceny ujemne liczone jako zero. Ceny RCE z PSE są dostępne od 14.06.2024. Ceny RCEm wpisz w tabeli z publikacji PSE. Depozyt pokrywa tylko opłaty za energię (nie dystrybucję) i jest ważny 12 miesięcy; szczegóły rozliczenia zależą od umowy ze sprzedawcą."/>
+
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="5"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+
+            <ScottPlot:WpfPlot x:Name="WpfPlot"/>
+
+            <GridSplitter Grid.Row="1" HorizontalAlignment="Stretch"/>
+
+            <DataGrid Grid.Row="2" ItemsSource="{Binding Months}" AutoGenerateColumns="False" CanUserAddRows="False" CanUserDeleteRows="False"
+                      CanUserSortColumns="False" HeadersVisibility="Column" GridLinesVisibility="Horizontal">
+                <DataGrid.Resources>
+                    <Style TargetType="TextBlock" x:Key="Number">
+                        <Setter Property="HorizontalAlignment" Value="Right"/>
+                        <Setter Property="Margin" Value="4,0"/>
+                    </Style>
+                </DataGrid.Resources>
+                <DataGrid.Columns>
+                    <DataGridTextColumn Header="Miesiąc" Binding="{Binding Month, StringFormat=MM.yyyy}" IsReadOnly="True"/>
+                    <DataGridTextColumn Header="Oddana [kWh]" Binding="{Binding Period.FedKwh, StringFormat=N1}" IsReadOnly="True" ElementStyle="{StaticResource Number}"/>
+                    <DataGridTextColumn Header="Śr. RCE [zł/MWh]" Binding="{Binding WeightedRcePlnMwh, StringFormat=N2}" IsReadOnly="True" ElementStyle="{StaticResource Number}"/>
+                    <DataGridTextColumn Header="Wartość RCE [zł]" Binding="{Binding ValueRce, StringFormat=N2}" IsReadOnly="True" ElementStyle="{StaticResource Number}"/>
+                    <DataGridTextColumn Header="Bez ceny RCE [kWh]" Binding="{Binding FedWithoutRceKwh, StringFormat=N1}" IsReadOnly="True" ElementStyle="{StaticResource Number}"/>
+                    <DataGridTextColumn Header="RCEm [zł/MWh] ✎" ElementStyle="{StaticResource Number}"
+                                        Binding="{Binding RcemPricePlnMwh, TargetNullValue='', UpdateSourceTrigger=LostFocus, ValidatesOnExceptions=True}"/>
+                    <DataGridTextColumn Header="Wartość RCEm [zł]" Binding="{Binding ValueRcem, StringFormat=N2}" IsReadOnly="True" ElementStyle="{StaticResource Number}"/>
+                    <DataGridTextColumn Header="RCE − RCEm [zł]" Binding="{Binding DifferenceRceMinusRcem, StringFormat=N2}" IsReadOnly="True" ElementStyle="{StaticResource Number}"/>
+                </DataGrid.Columns>
+            </DataGrid>
+        </Grid>
+    </DockPanel>
+</UserControl>

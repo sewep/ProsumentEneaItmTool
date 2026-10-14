@@ -142,7 +142,14 @@
         </ScrollViewer>
 
         <Grid>
-            <customcontrols:Charts Calculations="{Binding PowerCalculation}" Options="{Binding ChartOptions}" Margin="5" Padding="20,0,0,0"/>
+            <TabControl Margin="5,5,0,5">
+                <TabItem Header="Energia">
+                    <customcontrols:Charts Calculations="{Binding PowerCalculation}" Options="{Binding ChartOptions}" Margin="5" Padding="20,0,0,0"/>
+                </TabItem>
+                <TabItem Header="Net-billing (RCE / RCEm)">
+                    <customcontrols:NetBillingView DataContext="{Binding NetBilling}"/>
+                </TabItem>
+            </TabControl>
             <Border Background="#66222222" Visibility="{Binding IsBusy, Converter={StaticResource BoolToVis}}">
                 <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
                     <customcontrols:LoadingSpinner Width="50" Height="50"/>

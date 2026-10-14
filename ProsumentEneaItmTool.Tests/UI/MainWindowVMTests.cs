@@ -3,6 +3,7 @@ using ProsumentEneaItmTool.Model.Calculations;
 using ProsumentEneaItmTool.Model.DataBase;
 using ProsumentEneaItmTool.Model.Export;
 using ProsumentEneaItmTool.Model.ImportSource;
+using ProsumentEneaItmTool.Model.NetBilling;
 using ProsumentEneaItmTool.UI;
 using ProsumentEneaItmTool.UI.Utils;
 
@@ -25,7 +26,13 @@ namespace ProsumentEneaItmTool.Tests.UI
         private sealed class FakeExporter : ICsvExporter
         {
             public List<string> ExportedFiles { get; } = [];
-            public void Export(string filePath, IPowerCalculation calculation) => ExportedFiles.Add(filePath);
+            public NetBillingResult? NetBilling { get; private set; }
+
+            public void Export(string filePath, IPowerCalculation calculation, NetBillingResult? netBilling)
+            {
+                ExportedFiles.Add(filePath);
+                NetBilling = netBilling;
+            }
         }
 
         private sealed class FakeData : IEnergyDataExtractor, IEnergyDataUpdater
@@ -78,7 +85,51 @@ namespace ProsumentEneaItmTool.Tests.UI
             }
         }
 
+        internal sealed class FakePriceStore : IMarketPriceStore
+        {
+            public List<RcePrice> Rce { get; } = [];
+            public Dictionary<DateTime, double> Rcem { get; } = [];
+
+            public Task<List<RcePrice>> GetRcePricesAsync(DateTime from, DateTime to) =>
+                Task.FromResult(Rce.Where(x => x.Hour >= from && x.Hour <= to).ToList());
+
+            public Task<HashSet<DateTime>> GetDaysWithRcePricesAsync(DateTime dayFrom, DateTime dayTo) =>
+                Task.FromResult(Rce.Select(x => x.Hour.Date).ToHashSet());
+
+            public Task SaveRcePricesAsync(IReadOnlyCollection<RcePrice> prices)
+            {
+                Rce.AddRange(prices);
+                return Task.CompletedTask;
+            }
+
+            public Task<List<RcemPrice>> GetRcemPricesAsync() =>
+                Task.FromResult(Rcem.Select(x => new RcemPrice { Month = x.Key, PricePlnMwh = x.Value }).ToList());
+
+            public Task SetRcemPriceAsync(DateTime month, double? pricePlnMwh)
+            {
+                if (pricePlnMwh is double price)
+                {
+                    Rcem[month] = price;
+                }
+                else
+                {
+                    Rcem.Remove(month);
+                }
+
+                return Task.CompletedTask;
+            }
+        }
+
+        internal sealed class FakeUpdater : IRcePriceUpdater
+        {
+            public Func<DateTime, DateTime, int> OnDownload { get; set; } = (_, _) => 0;
+
+            public Task<int> DownloadMissingAsync(DateTime dayFrom, DateTime dayTo, IProgress<string>? progress, CancellationToken cancellationToken) =>
+                Task.FromResult(OnDownload(dayFrom, dayTo));
+        }
+
         private FakeLoader _loader = null!;
+        private FakePriceStore _prices = null!;
         private FakeData _data = null!;
         private FakeDialogs _dialogs = null!;
         private FakeExporter _exporter = null!;
@@ -90,11 +141,12 @@ namespace ProsumentEneaItmTool.Tests.UI
             _data = new FakeData();
             _dialogs = new FakeDialogs();
             _exporter = new FakeExporter();
+            _prices = new FakePriceStore();
         }
 
         private async Task<MainWindowVM> CreateAsync()
         {
-            var vm = new MainWindowVM(_loader, _data, _data, new PowerCalculation(), _dialogs, _exporter);
+            var vm = new MainWindowVM(_loader, _data, _data, new PowerCalculation(), _dialogs, _exporter, new NetBillingVM(_prices, new FakeUpdater(), _dialogs));
             await vm.Initialization;
             return vm;
         }
@@ -220,6 +272,7 @@ namespace ProsumentEneaItmTool.Tests.UI
             {
                 Assert.That(_dialogs.SuggestedFileName, Is.EqualTo("Prosument_2024-01-01_2024-03-01_miesiace.csv"));
                 Assert.That(_exporter.ExportedFiles, Is.EqualTo(new[] { @"C:\eksport.csv" }));
+                Assert.That(_exporter.NetBilling?.Periods.Select(x => x.Time), Is.EqualTo(new[] { new DateTime(2024, 1, 1), new DateTime(2024, 3, 1) }));
             });
         }
 
@@ -235,6 +288,42 @@ namespace ProsumentEneaItmTool.Tests.UI
             {
                 Assert.That(_exporter.ExportedFiles, Is.Empty);
                 Assert.That(_dialogs.Informations, Has.Count.EqualTo(1));
+            });
+        }
+
+        [Test]
+        public async Task NetBilling_IsUpdatedWithSelectedRangeAndStoredPrices()
+        {
+            _data.Stored.Add(new ImportFileRecord { Date = new DateTime(2025, 7, 1, 12, 59, 0), FedVolumeAfterBanancing = 10 });
+            _prices.Rce.Add(new RcePrice { Hour = new DateTime(2025, 7, 1, 12, 0, 0), PricePlnMwh = 500 });
+            _prices.Rcem[new DateTime(2025, 7, 1)] = 300;
+
+            var vm = await CreateAsync();
+
+            var total = vm.NetBilling.Result.Total;
+            Assert.Multiple(() =>
+            {
+                Assert.That(total.ValueRce, Is.EqualTo(10 * 0.5 * 1.23).Within(1e-9));
+                Assert.That(total.ValueRcem, Is.EqualTo(10 * 0.3 * 1.23).Within(1e-9));
+                Assert.That(vm.NetBilling.Months, Has.Count.EqualTo(1));
+            });
+        }
+
+        [Test]
+        public async Task NetBilling_EnteredRcemIsStoredAndRecalculated()
+        {
+            _data.Stored.Add(new ImportFileRecord { Date = new DateTime(2025, 7, 1, 12, 59, 0), FedVolumeAfterBanancing = 10 });
+            var vm = await CreateAsync();
+            vm.NetBilling.DepositCoefficient = 1.0;
+
+            vm.NetBilling.Months[0].RcemPricePlnMwh = 200;
+            await Task.Yield();
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(_prices.Rcem[new DateTime(2025, 7, 1)], Is.EqualTo(200));
+                Assert.That(vm.NetBilling.Result.Total.ValueRcem, Is.EqualTo(2).Within(1e-9));
+                Assert.That(vm.NetBilling.Months[0].Period.ValueRcem, Is.EqualTo(2).Within(1e-9));
             });
         }
 
