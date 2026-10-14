@@ -4,6 +4,7 @@ using ProsumentEneaItmTool.Domain;
 using ProsumentEneaItmTool.Model.Calculations;
 using ProsumentEneaItmTool.Model.DataBase;
 using ProsumentEneaItmTool.Model.ImportSource;
+using ProsumentEneaItmTool.UI.CustomControls;
 using ProsumentEneaItmTool.UI.Utils;
 
 namespace ProsumentEneaItmTool.UI
@@ -38,6 +39,9 @@ namespace ProsumentEneaItmTool.UI
             _energyDataUpdater = energyDataUpdater;
             _powerCalculation = powerCalculation;
             _userDialogs = userDialogs;
+
+            // A year of hourly data is easier to read and faster to draw by days.
+            _powerCalculation.Aggregation = Aggregation.Day;
 
             LoadFromFileCommand = new AsyncRelayCommand(LoadFromFileAsync, () => !IsBusy);
             ClearAllDataCommand = new AsyncRelayCommand(ClearAllDataAsync, () => !IsBusy);
@@ -117,6 +121,24 @@ namespace ProsumentEneaItmTool.UI
         }
 
         public IPowerCalculation PowerCalculation => _powerCalculation;
+
+        public ChartOptions ChartOptions { get; } = new();
+
+        public Aggregation Aggregation
+        {
+            get => _powerCalculation.Aggregation;
+            set
+            {
+                if (_powerCalculation.Aggregation == value)
+                {
+                    return;
+                }
+
+                _powerCalculation.Aggregation = value;
+                OnPropertyChanged();
+                Recalculate();
+            }
+        }
 
         public List<ImportFileRecord> Records
         {

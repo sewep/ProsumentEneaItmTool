@@ -106,6 +106,64 @@ namespace ProsumentEneaItmTool.Tests.Model.Calculations
             });
         }
 
+        private static List<ImportFileRecord> HourlyRecordsInTwoMonths() =>
+        [
+            new() { Date = new DateTime(2024, 1, 31, 10, 0, 0), TakenVolumeAfterBanancing = 1, FedVolumeAfterBanancing = 2 },
+            new() { Date = new DateTime(2024, 1, 31, 11, 0, 0), TakenVolumeAfterBanancing = 3, FedVolumeAfterBanancing = 4 },
+            new() { Date = new DateTime(2024, 2, 1, 0, 0, 0), TakenVolumeAfterBanancing = 5, FedVolumeAfterBanancing = 0 },
+            new() { Date = new DateTime(2024, 2, 15, 12, 0, 0), TakenVolumeAfterBanancing = 2, FedVolumeAfterBanancing = 10 },
+        ];
+
+        [Test]
+        public void PowerCalculationTest_DayAggregationSumsEachDay()
+        {
+            var powerCalculation = new PowerCalculation { Aggregation = Aggregation.Day };
+            powerCalculation.Calculate(HourlyRecordsInTwoMonths());
+
+            var periods = powerCalculation.PeriodResults;
+            Assert.Multiple(() =>
+            {
+                Assert.That(periods.Select(x => x.Time), Is.EqualTo(new[] { new DateTime(2024, 1, 31), new DateTime(2024, 2, 1), new DateTime(2024, 2, 15) }));
+                Assert.That(periods.Select(x => x.ConsumedAfterBalancing), Is.EqualTo(new[] { 4.0, 5.0, 2.0 }));
+                Assert.That(periods.Select(x => x.FedAfterBalancing), Is.EqualTo(new[] { 6.0, 0.0, 10.0 }));
+                Assert.That(periods[0].DifferenceAfterBalancing, Is.EqualTo(2));
+                Assert.That(powerCalculation.CalculationEnergyChart.Select(x => x.ConsumedAfterBalancing), Is.EqualTo(new[] { 4.0, 9.0, 11.0 }));
+            });
+        }
+
+        [Test]
+        public void PowerCalculationTest_MonthAggregationSumsEachMonth()
+        {
+            var powerCalculation = new PowerCalculation { Aggregation = Aggregation.Month, FreeEnergyCoefficient = 0.5 };
+            powerCalculation.Calculate(HourlyRecordsInTwoMonths());
+
+            var periods = powerCalculation.PeriodResults;
+            Assert.Multiple(() =>
+            {
+                Assert.That(periods.Select(x => x.Time), Is.EqualTo(new[] { new DateTime(2024, 1, 1), new DateTime(2024, 2, 1) }));
+                Assert.That(periods.Select(x => x.ConsumedAfterBalancing), Is.EqualTo(new[] { 4.0, 7.0 }));
+                Assert.That(periods.Select(x => x.FreeToUseAfterBalancing), Is.EqualTo(new[] { 6 * 0.5 - 4, 10 * 0.5 - 7 }));
+            });
+        }
+
+        [TestCase(Aggregation.Hour)]
+        [TestCase(Aggregation.Day)]
+        [TestCase(Aggregation.Month)]
+        public void PowerCalculationTest_AggregationDoesNotChangeTotals(Aggregation aggregation)
+        {
+            var powerCalculation = new PowerCalculation { Aggregation = aggregation };
+            powerCalculation.Calculate(HourlyRecordsInTwoMonths());
+
+            var lastPoint = powerCalculation.CalculationEnergyChart[^1];
+            Assert.Multiple(() =>
+            {
+                Assert.That(powerCalculation.CalculationEnergyResults.ConsumedAfterBalancing, Is.EqualTo(11));
+                Assert.That(lastPoint.ConsumedAfterBalancing, Is.EqualTo(11));
+                Assert.That(lastPoint.FedAfterBalancing, Is.EqualTo(16));
+                Assert.That(powerCalculation.PeriodResults.Sum(x => x.FedAfterBalancing), Is.EqualTo(16));
+            });
+        }
+
         [Test]
         public void PowerCalculationTest_LastChartPointEqualsTotals()
         {

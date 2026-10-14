@@ -12,8 +12,10 @@ namespace ProsumentEneaItmTool.UI.CustomControls
         private readonly string _legend;
         private readonly Color _color;
         private readonly string _pointDescriptionFormat;
+        private readonly bool _isSecondary;
+        private readonly float _markerSize;
 
-        public GraphFlow(Plot plot, DateTime[] dates, double[] values, string legend, Color color, string pointDescriptionFormat)
+        public GraphFlow(Plot plot, DateTime[] dates, double[] values, string legend, Color color, string pointDescriptionFormat, bool isSecondary, float markerSize)
         {
             _plot = plot;
             _dates = dates;
@@ -21,6 +23,8 @@ namespace ProsumentEneaItmTool.UI.CustomControls
             _legend = legend;
             _color = color;
             _pointDescriptionFormat = pointDescriptionFormat;
+            _isSecondary = isSecondary;
+            _markerSize = markerSize;
 
             AddToPlot();
         }
@@ -46,7 +50,16 @@ namespace ProsumentEneaItmTool.UI.CustomControls
             _scatter = _plot.Add.Scatter(_dates, _values);
             _scatter.LegendText = _legend;
             _scatter.Color = _color;
-            _scatter.MarkerSize = 2;
+            _scatter.MarkerSize = _markerSize;
+
+            // A secondary series (before balancing) has the same color, but is lighter, dashed and with open markers.
+            if (_isSecondary)
+            {
+                _scatter.Color = _color.WithAlpha(0.6);
+                _scatter.LinePattern = LinePattern.Dashed;
+                _scatter.MarkerShape = MarkerShape.OpenCircle;
+                _scatter.MarkerSize = _markerSize + 1;
+            }
         }
     }
 }

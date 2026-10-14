@@ -5,6 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:ProsumentEneaItmTool.UI"
         xmlns:customcontrols="clr-namespace:ProsumentEneaItmTool.UI.CustomControls"
+        xmlns:domain="clr-namespace:ProsumentEneaItmTool.Domain"
         d:DataContext="{d:DesignInstance Type=local:MainWindowVM}"
         mc:Ignorable="d"
         Title="Prosument Enea Itm Tool"
@@ -53,7 +54,45 @@
                              ToolTip="{Binding RelativeSource={RelativeSource Self}, Path=(Validation.Errors)[0].ErrorContent}" />
                 </Grid>
                 
-                <Grid Background="LightGoldenrodYellow" Margin="0,15,0,0">
+                <GroupBox Header="Wykres" Margin="0,5,0,0">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="auto"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="auto"/>
+                            <RowDefinition Height="auto"/>
+                            <RowDefinition Height="auto"/>
+                        </Grid.RowDefinitions>
+                        <Label Content="Okres"/>
+                        <ComboBox Grid.Column="1" Margin="0,2" SelectedValuePath="Tag" SelectedValue="{Binding Aggregation}">
+                            <ComboBoxItem Content="Godziny" Tag="{x:Static domain:Aggregation.Hour}"/>
+                            <ComboBoxItem Content="Dni" Tag="{x:Static domain:Aggregation.Day}"/>
+                            <ComboBoxItem Content="Miesiące" Tag="{x:Static domain:Aggregation.Month}"/>
+                        </ComboBox>
+                        <Label Grid.Row="1" Content="Wartości"/>
+                        <ComboBox Grid.Row="1" Grid.Column="1" Margin="0,2" SelectedValuePath="Tag" SelectedValue="{Binding ChartOptions.Mode}">
+                            <ComboBoxItem Content="Narastająco" Tag="{x:Static customcontrols:ChartMode.Cumulative}"/>
+                            <ComboBoxItem Content="W każdym okresie" Tag="{x:Static customcontrols:ChartMode.PerPeriod}"/>
+                        </ComboBox>
+                        <UniformGrid Grid.Row="2" Grid.ColumnSpan="2" Columns="2" Margin="0,4,0,2">
+                            <UniformGrid.Resources>
+                                <Style TargetType="CheckBox">
+                                    <Setter Property="Margin" Value="2,2"/>
+                                </Style>
+                            </UniformGrid.Resources>
+                            <CheckBox Content="Po bilansowaniu" IsChecked="{Binding ChartOptions.ShowAfterBalancing}"/>
+                            <CheckBox Content="Przed bilans." IsChecked="{Binding ChartOptions.ShowBeforeBalancing}" ToolTip="Przed bilansowaniem (linia przerywana)"/>
+                            <CheckBox Content="Pobrana" IsChecked="{Binding ChartOptions.ShowConsumed}" Foreground="Red"/>
+                            <CheckBox Content="Wysłana" IsChecked="{Binding ChartOptions.ShowFed}" Foreground="Green"/>
+                            <CheckBox Content="Różnica" IsChecked="{Binding ChartOptions.ShowDifference}" Foreground="Blue"/>
+                            <CheckBox Content="Po opuście" IsChecked="{Binding ChartOptions.ShowFreeToUse}" Foreground="Purple"/>
+                        </UniformGrid>
+                    </Grid>
+                </GroupBox>
+
+                <Grid Background="LightGoldenrodYellow" Margin="0,10,0,0">
                     <Grid.Resources>
                         <Style TargetType="Label">
                             <Setter Property="HorizontalContentAlignment" Value="Center"/>
@@ -100,7 +139,7 @@
         </ScrollViewer>
 
         <Grid>
-            <customcontrols:Charts Calculations="{Binding PowerCalculation}" Margin="5" Padding="20,0,0,0"/>
+            <customcontrols:Charts Calculations="{Binding PowerCalculation}" Options="{Binding ChartOptions}" Margin="5" Padding="20,0,0,0"/>
             <Border Background="#66222222" Visibility="{Binding IsBusy, Converter={StaticResource BoolToVis}}">
                 <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
                     <customcontrols:LoadingSpinner Width="50" Height="50"/>
