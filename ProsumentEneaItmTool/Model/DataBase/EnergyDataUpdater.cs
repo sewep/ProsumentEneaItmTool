@@ -14,14 +14,24 @@ namespace ProsumentEneaItmTool.Model.DataBase
 
         public async Task AddOrUpdateDataAsync(List<ImportFileRecord> records)
         {
-            records.ForEach(async x =>
+            if (records.Count == 0)
             {
-                var toRemove = await _dataContext.ImportedRecords.Where(y => y.Date.Equals(x.Date)).ToListAsync();
-                _dataContext.ImportedRecords.RemoveRange(toRemove);
-            });
+                return;
+            }
+
+            var importedDates = records.Select(x => x.Date).Distinct().ToList();
+
+            await using var transaction = await _dataContext.Database.BeginTransactionAsync();
+
+            // Records from the imported file replace the stored ones for the same hours.
+            await _dataContext.ImportedRecords
+                .Where(x => importedDates.Contains(x.Date))
+                .ExecuteDeleteAsync();
 
             await _dataContext.ImportedRecords.AddRangeAsync(records);
             await _dataContext.SaveChangesAsync();
+
+            await transaction.CommitAsync();
         }
 
         public async Task ClearAllDataAsync()

@@ -70,14 +70,61 @@ namespace ProsumentEneaItmTool.Tests.Model.Calculations
             var chartCalculations = powerCalculation.CalculationEnergyChart[1];
             Assert.Multiple(() =>
             {
-                Assert.That(chartCalculations.ConsumedBeforeBalancing, Is.EqualTo(105));
-                Assert.That(chartCalculations.ConsumedAfterBalancing, Is.EqualTo(95));
-                Assert.That(chartCalculations.FedBeforeBalancing, Is.EqualTo(55));
-                Assert.That(chartCalculations.FedAfterBalancing, Is.EqualTo(45));
-                Assert.That(chartCalculations.DifferenceBeforeBalancing, Is.EqualTo(-50));
-                Assert.That(chartCalculations.DifferenceAfterBalancing, Is.EqualTo(-50));
-                Assert.That(chartCalculations.FreeToUseBeforeBalancing, Is.EqualTo(-61));
-                Assert.That(chartCalculations.FreeToUseAfterBalancing, Is.EqualTo(-59));
+                Assert.That(chartCalculations.ConsumedBeforeBalancing, Is.EqualTo(205));
+                Assert.That(chartCalculations.ConsumedAfterBalancing, Is.EqualTo(185));
+                Assert.That(chartCalculations.FedBeforeBalancing, Is.EqualTo(105));
+                Assert.That(chartCalculations.FedAfterBalancing, Is.EqualTo(85));
+                Assert.That(chartCalculations.DifferenceBeforeBalancing, Is.EqualTo(-100));
+                Assert.That(chartCalculations.DifferenceAfterBalancing, Is.EqualTo(-100));
+                Assert.That(chartCalculations.FreeToUseBeforeBalancing, Is.EqualTo(-121));
+                Assert.That(chartCalculations.FreeToUseAfterBalancing, Is.EqualTo(-117));
+            });
+        }
+
+        [Test]
+        public void PowerCalculationTest_FirstChartPointContainsFirstRecord()
+        {
+            var records = new List<ImportFileRecord>() {
+                new() {
+                    Date = new DateTime(2024, 1, 1),
+                    TakenVolumeBeforeBanancing = 100,
+                    TakenVolumeAfterBanancing = 90,
+                    FedVolumeBeforeBanancing = 50,
+                    FedVolumeAfterBanancing = 40 },
+            };
+
+            var powerCalculation = new PowerCalculation();
+            powerCalculation.Calculate(records);
+
+            var firstPoint = powerCalculation.CalculationEnergyChart[0];
+            Assert.Multiple(() =>
+            {
+                Assert.That(firstPoint.ConsumedBeforeBalancing, Is.EqualTo(100));
+                Assert.That(firstPoint.ConsumedAfterBalancing, Is.EqualTo(90));
+                Assert.That(firstPoint.FedBeforeBalancing, Is.EqualTo(50));
+                Assert.That(firstPoint.FedAfterBalancing, Is.EqualTo(40));
+            });
+        }
+
+        [Test]
+        public void PowerCalculationTest_LastChartPointEqualsTotals()
+        {
+            var records = new List<ImportFileRecord>() {
+                new() { Date = new DateTime(2024, 1, 1), TakenVolumeAfterBanancing = 3, FedVolumeAfterBanancing = 1 },
+                new() { Date = new DateTime(2024, 1, 2), TakenVolumeAfterBanancing = 5, FedVolumeAfterBanancing = 7 },
+                new() { Date = new DateTime(2024, 1, 3), TakenVolumeAfterBanancing = 2, FedVolumeAfterBanancing = 4 },
+            };
+
+            var powerCalculation = new PowerCalculation();
+            powerCalculation.Calculate(records);
+
+            var lastPoint = powerCalculation.CalculationEnergyChart[^1];
+            var totals = powerCalculation.CalculationEnergyResults;
+            Assert.Multiple(() =>
+            {
+                Assert.That(lastPoint.ConsumedAfterBalancing, Is.EqualTo(totals.ConsumedAfterBalancing));
+                Assert.That(lastPoint.FedAfterBalancing, Is.EqualTo(totals.FedAfterBalancing));
+                Assert.That(lastPoint.FreeToUseAfterBalancing, Is.EqualTo(totals.FreeToUseAfterBalancing).Within(1e-9));
             });
         }
     }

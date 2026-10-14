@@ -1,5 +1,4 @@
-﻿using System.Diagnostics;
-using System.Windows;
+﻿using System.Windows;
 using System.Windows.Input;
 using ProsumentEneaItmTool.Domain;
 using ProsumentEneaItmTool.Model.Calculations;
@@ -15,10 +14,14 @@ namespace ProsumentEneaItmTool.UI
         private readonly IEnergyDataUpdater _energyDataUpdater;
         private readonly IPowerCalculation _powerCalculation;
 
+        // The data context is shared, so database operations must not overlap.
+        private readonly SemaphoreSlim _dataBaseLock = new(1, 1);
+
         private DateTime _dateFrom;
         private DateTime _dateTo;
         private List<ImportFileRecord> _records = [];
         private int _isBusyCounter = 0;
+        private int _recordsRequestId = 0;
 
         public MainWindowVM(IFileEneaCsvLoader fileEneaCsvLoader,
                             IEnergyDataExtractor energyDataExtractor,
@@ -30,7 +33,12 @@ namespace ProsumentEneaItmTool.UI
             _energyDataUpdater = energyDataUpdater;
             _powerCalculation = powerCalculation;
 
-            _ = SelectFullDateRangesAsync();
+            LoadFromFile = new RelayCommand(async _ => await LoadFromFileAsync(), _ => !IsBusy);
+            ClearAllData = new RelayCommand(async _ => await RunAsync(ClearAllDataAsync), _ => !IsBusy);
+            SetLastYear = new RelayCommand(async _ => await RunAsync(SetLastYearAsync), _ => !IsBusy);
+            SetEntireEnteredTimePeriod = new RelayCommand(async _ => await RunAsync(SelectFullDateRangesAsync), _ => !IsBusy);
+
+            _ = RunAsync(SelectFullDateRangesAsync);
         }
 
         public DateTime DateFrom
@@ -40,7 +48,7 @@ namespace ProsumentEneaItmTool.UI
             {
                 _dateFrom = value;
                 OnPropertyChanged();
-                _ = UseSelectedRangeAsync();
+                _ = RunAsync(UseSelectedRangeAsync);
             }
         }
         public DateTime DateTo
@@ -50,29 +58,11 @@ namespace ProsumentEneaItmTool.UI
             {
                 _dateTo = value;
                 OnPropertyChanged();
-                _ = UseSelectedRangeAsync();
+                _ = RunAsync(UseSelectedRangeAsync);
             }
         }
 
-        public bool IsBusy
-        {
-            get => _isBusyCounter > 0;
-            set
-            {
-                if (value)
-                {
-                    _isBusyCounter++;
-                    Debug.WriteLine($"Busy increase {_isBusyCounter}");
-                }
-                else
-                {
-                    _isBusyCounter--;
-                    Debug.WriteLine($"Busy decrease {_isBusyCounter}");
-                }
-
-                OnPropertyChanged();
-            }
-        }
+        public bool IsBusy => _isBusyCounter > 0;
 
         public CalculationEnergyResults CalculationEnergyResults => _powerCalculation.CalculationEnergyResults;
 
@@ -83,7 +73,7 @@ namespace ProsumentEneaItmTool.UI
             {
                 _powerCalculation.FreeEnergyCoefficient = value;
                 OnPropertyChanged();
-                _ = UseSelectedRangeAsync();
+                Recalculate();
             }
         }
 
@@ -95,86 +85,147 @@ namespace ProsumentEneaItmTool.UI
             set
             {
                 _records = value;
-                _powerCalculation.Calculate(_records);
                 OnPropertyChanged();
-                OnPropertyChanged(nameof(CalculationEnergyResults));
+                Recalculate();
             }
         }
 
-        public ICommand LoadFromFile => new RelayCommand(async (o) =>
+        public ICommand LoadFromFile { get; }
+
+        public ICommand ClearAllData { get; }
+
+        public ICommand SetLastYear { get; }
+
+        public ICommand SetEntireEnteredTimePeriod { get; }
+
+        private async Task LoadFromFileAsync()
         {
+            List<ImportFileRecord> list;
             try
             {
-                var list = _fileEneaCsvLoader.Load().ToList();
-
-                IsBusy = true;
-                await Task.Yield();
-
-                await Task.Run(async () =>
-                {
-                    await _energyDataUpdater.AddOrUpdateDataAsync(list);
-                });
-
-                IsBusy = false;
+                list = _fileEneaCsvLoader.Load().ToList();
             }
             catch (Exception e)
             {
-                MessageBox.Show(e.ToString(), "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                ShowError(e);
+                return;
             }
 
-            await SelectFullDateRangesAsync();
-        });
-
-        public ICommand ClearAllData => new RelayCommand(async (o) =>
-        {
-            IsBusy = true;
-            await Task.Run(async () =>
+            if (list.Count == 0)
             {
-                await _energyDataUpdater.ClearAllDataAsync();
+                return;
+            }
+
+            await RunAsync(async () =>
+            {
+                await RunDataBaseAsync(() => _energyDataUpdater.AddOrUpdateDataAsync(list));
                 await SelectFullDateRangesAsync();
             });
-            IsBusy = false;
-        });
+        }
 
-        public ICommand SetLastYear => new RelayCommand(async (o) =>
+        private async Task ClearAllDataAsync()
         {
-            await SetLastYearAsync();
-        });
-
-        public ICommand SetEntireEnteredTimePeriod => new RelayCommand(async (o) =>
-        {
+            await RunDataBaseAsync(_energyDataUpdater.ClearAllDataAsync);
             await SelectFullDateRangesAsync();
-        });
+        }
 
         private async Task SetLastYearAsync()
         {
-            IsBusy = true;
-            await Task.Run(async () =>
-            {
-                DateTime dateFrom;
-                (dateFrom, DateTo) = await _energyDataExtractor.GetDateRangesAsync();
-                DateFrom = DateTo.AddYears(-1);
-                await UseSelectedRangeAsync();
-            });
-            IsBusy = false;
+            var (_, dateTo) = await RunDataBaseAsync(_energyDataExtractor.GetDateRangesAsync);
+            SetDateRange(dateTo.AddYears(-1), dateTo);
+            await UseSelectedRangeAsync();
         }
 
         private async Task SelectFullDateRangesAsync()
         {
-            IsBusy = true;
-            await Task.Run(async () =>
-            {
-                (DateFrom, DateTo) = await _energyDataExtractor.GetDateRangesAsync();
-                await UseSelectedRangeAsync();
-            });
-            IsBusy = false;
+            var (dateFrom, dateTo) = await RunDataBaseAsync(_energyDataExtractor.GetDateRangesAsync);
+            SetDateRange(dateFrom, dateTo);
+            await UseSelectedRangeAsync();
         }
 
         private async Task UseSelectedRangeAsync()
         {
-            IsBusy = true;
-            Records = await _energyDataExtractor.GetItemsByDateRangesAsync(DateFrom, DateTo);
-            IsBusy = false;
+            var requestId = ++_recordsRequestId;
+            var records = await RunDataBaseAsync(() => _energyDataExtractor.GetItemsByDateRangesAsync(DateFrom, DateTo));
+
+            // A newer request has been started in the meantime, its result wins.
+            if (requestId == _recordsRequestId)
+            {
+                Records = records;
+            }
+        }
+
+        /// <summary>
+        /// Sets both dates without triggering a separate reload for each of them.
+        /// </summary>
+        private void SetDateRange(DateTime dateFrom, DateTime dateTo)
+        {
+            _dateFrom = dateFrom;
+            _dateTo = dateTo;
+            OnPropertyChanged(nameof(DateFrom), nameof(DateTo));
+        }
+
+        private void Recalculate()
+        {
+            _powerCalculation.Calculate(_records);
+            OnPropertyChanged(nameof(CalculationEnergyResults));
+        }
+
+        /// <summary>
+        /// Runs a database operation off the UI thread, one at a time.
+        /// </summary>
+        private async Task<T> RunDataBaseAsync<T>(Func<Task<T>> operation)
+        {
+            await _dataBaseLock.WaitAsync();
+            try
+            {
+                return await Task.Run(operation);
+            }
+            finally
+            {
+                _dataBaseLock.Release();
+            }
+        }
+
+        private Task RunDataBaseAsync(Func<Task> operation)
+        {
+            return RunDataBaseAsync(async () =>
+            {
+                await operation();
+                return true;
+            });
+        }
+
+        /// <summary>
+        /// Shows the busy indicator for the time of the action and reports its errors.
+        /// </summary>
+        private async Task RunAsync(Func<Task> action)
+        {
+            SetBusy(true);
+            try
+            {
+                await action();
+            }
+            catch (Exception e)
+            {
+                ShowError(e);
+            }
+            finally
+            {
+                SetBusy(false);
+            }
+        }
+
+        private void SetBusy(bool busy)
+        {
+            _isBusyCounter += busy ? 1 : -1;
+            OnPropertyChanged(nameof(IsBusy));
+            CommandManager.InvalidateRequerySuggested();
+        }
+
+        private static void ShowError(Exception e)
+        {
+            MessageBox.Show(e.ToString(), "Error", MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
 }

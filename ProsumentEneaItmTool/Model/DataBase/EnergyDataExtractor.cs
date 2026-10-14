@@ -24,6 +24,7 @@ namespace ProsumentEneaItmTool.Model.DataBase
 
             return await _dataContext.ImportedRecords
                 .Where(record => record.Date >= dateFrom && record.Date <= dateTo)
+                .OrderBy(record => record.Date)
                 .ToListAsync();
         }
 

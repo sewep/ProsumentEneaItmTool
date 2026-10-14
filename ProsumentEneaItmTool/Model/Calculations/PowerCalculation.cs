@@ -41,10 +41,10 @@ namespace ProsumentEneaItmTool.Model.Calculations
                 var pos = new CalculationEnergyResults()
                 {
                     Time = record.Date,
-                    ConsumedBeforeBalancing = record.TakenVolumeBeforeBanancing + lastAdded?.ConsumedBeforeBalancing ?? 0,
-                    ConsumedAfterBalancing = record.TakenVolumeAfterBanancing + lastAdded?.ConsumedAfterBalancing ?? 0,
-                    FedBeforeBalancing = record.FedVolumeBeforeBanancing + lastAdded?.FedBeforeBalancing ?? 0,
-                    FedAfterBalancing = record.FedVolumeAfterBanancing + lastAdded?.FedAfterBalancing ?? 0
+                    ConsumedBeforeBalancing = record.TakenVolumeBeforeBanancing + (lastAdded?.ConsumedBeforeBalancing ?? 0),
+                    ConsumedAfterBalancing = record.TakenVolumeAfterBanancing + (lastAdded?.ConsumedAfterBalancing ?? 0),
+                    FedBeforeBalancing = record.FedVolumeBeforeBanancing + (lastAdded?.FedBeforeBalancing ?? 0),
+                    FedAfterBalancing = record.FedVolumeAfterBanancing + (lastAdded?.FedAfterBalancing ?? 0)
                 };
                 pos.DifferenceBeforeBalancing = pos.FedBeforeBalancing - pos.ConsumedBeforeBalancing;
                 pos.DifferenceAfterBalancing = pos.FedAfterBalancing - pos.ConsumedAfterBalancing;

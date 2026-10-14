@@ -14,6 +14,7 @@ namespace ProsumentEneaItmTool.UI.CustomControls
     public partial class Charts : UserControl
     {
         private Crosshair? _myCrosshair;
+        private List<GraphFlow> _scatters = [];
 
         public IPowerCalculation Calculations
         {
@@ -26,10 +27,22 @@ namespace ProsumentEneaItmTool.UI.CustomControls
 
         private static void OnRecordsChange(DependencyObject d, DependencyPropertyChangedEventArgs e)
         {
-            if (d is Charts charts)
+            if (d is not Charts charts)
             {
-                charts.Calculations.CalculationUpdated += charts.OnCalculationsUpdated;
+                return;
             }
+
+            if (e.OldValue is IPowerCalculation oldCalculations)
+            {
+                oldCalculations.CalculationUpdated -= charts.OnCalculationsUpdated;
+            }
+
+            if (e.NewValue is IPowerCalculation newCalculations)
+            {
+                newCalculations.CalculationUpdated += charts.OnCalculationsUpdated;
+            }
+
+            charts.ReloadData();
         }
 
         private void OnCalculationsUpdated(object? sender, EventArgs e)
@@ -40,6 +53,8 @@ namespace ProsumentEneaItmTool.UI.CustomControls
         public Charts()
         {
             InitializeComponent();
+
+            WpfPlot.MouseMove += OnPlotMouseMove;
 
             ReloadData();
         }
@@ -57,6 +72,8 @@ namespace ProsumentEneaItmTool.UI.CustomControls
             }
 
             WpfPlot.Plot.Clear();
+            _scatters = [];
+            _myCrosshair = null;
 
             if (Calculations is null)
             {
@@ -72,7 +89,7 @@ namespace ProsumentEneaItmTool.UI.CustomControls
             var diffABn = chartPoints.Select(x => x.FreeToUseAfterBalancing).ToArray();
 
             var plot = WpfPlot.Plot;
-            var scatters = new List<GraphFlow>()
+            _scatters = new List<GraphFlow>()
             {
                 new(plot, dates, takenAB, "Pob. po b.", Color.FromARGB(0xffff0000), "{0:yyyy.MM.dd}, Wolumin pobranej energii = {1:F0} kWh"),
                 new(plot, dates, fedAB, "Wys. po b.", Color.FromARGB(0xff00bb00), "{0:yyyy.MM.dd}, Wolumin wysłanej energii = {1:F0} kWh"),
@@ -97,7 +114,7 @@ namespace ProsumentEneaItmTool.UI.CustomControls
             plot.Axes.Left.IsVisible = false;
             plot.Axes.Left.MinimumSize = 15;
 
-            foreach (var scatter in scatters)
+            foreach (var scatter in _scatters)
             {
                 if (scatter.Scatter != null)
                 {
@@ -105,27 +122,33 @@ namespace ProsumentEneaItmTool.UI.CustomControls
                 }
             }
 
-            WpfPlot.MouseMove += (s, e) =>
+            WpfPlot.Refresh();
+        }
+
+        private void OnPlotMouseMove(object sender, MouseEventArgs e)
+        {
+            if (_myCrosshair is null || _scatters.Count == 0)
             {
-                Coordinates mouseLocation = GetMouseCursorPositon(e, plot);
+                return;
+            }
 
-                bool showCross = false;
-                string pointDetails = string.Empty;
+            var plot = WpfPlot.Plot;
+            Coordinates mouseLocation = GetMouseCursorPositon(e, plot);
 
-                foreach (var scatter in scatters)
+            bool showCross = false;
+            string pointDetails = string.Empty;
+
+            foreach (var scatter in _scatters)
+            {
+                scatter.PointDetailsIfMouseOver(mouseLocation, _myCrosshair, ref showCross, ref pointDetails);
+                if (showCross)
                 {
-                    scatter.PointDetailsIfMouseOver(mouseLocation, _myCrosshair, ref showCross, ref pointDetails);
-                    if (showCross)
-                    {
-                        break;
-                    }
+                    break;
                 }
+            }
 
-                _myCrosshair.IsVisible = showCross;
-                PointInfo.Content = pointDetails;
-
-                WpfPlot.Refresh();
-            };
+            _myCrosshair.IsVisible = showCross;
+            PointInfo.Content = pointDetails;
 
             WpfPlot.Refresh();
         }

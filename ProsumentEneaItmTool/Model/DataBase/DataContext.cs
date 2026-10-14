@@ -12,9 +12,17 @@ namespace ProsumentEneaItmTool.Model.DataBase
             Database.Migrate();
         }
 
+        public DataContext(DbContextOptions<DataContext> options) : base(options)
+        {
+            Database.Migrate();
+        }
+
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
         {
-            optionsBuilder.UseSqlite($"Data Source={_dbFile}");
+            if (!optionsBuilder.IsConfigured)
+            {
+                optionsBuilder.UseSqlite($"Data Source={_dbFile}");
+            }
         }
 
         public DbSet<ImportFileRecord> ImportedRecords => Set<ImportFileRecord>();
