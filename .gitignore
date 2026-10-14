@@ -402,3 +402,6 @@ FodyWeavers.xsd
 *.sqlite-shm
 *.sqlite-wal
 SetupBuilder/Output/
+
+# Claude Code session handoffs
+session-logs/
