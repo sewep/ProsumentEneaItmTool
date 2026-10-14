@@ -58,8 +58,26 @@ namespace ProsumentEneaItmTool.Tests.Model.Export
                 Assert.That(lines[0], Does.EndWith(";Net-billing: wartość wg RCE [zł];Net-billing: bez ceny RCE [kWh];Net-billing: wartość wg RCEm [zł];Net-billing: bez ceny RCEm [kWh]"));
                 // January has no net-billing values, February has RCE only.
                 Assert.That(lines[1], Does.EndWith(";;;;"));
-                Assert.That(lines[2], Does.EndWith(";12,35;0;0,00;25,125"));
+                // Missing RCEm price is an empty value, not zero.
+                Assert.That(lines[2], Does.EndWith(";12,35;0;;25,125"));
             });
+        }
+
+        [Test]
+        public void BuildCsv_WritesZeroValueWhenNoEnergyWasFed()
+        {
+            var netBilling = new NetBillingResult
+            {
+                Periods =
+                [
+                    new NetBillingPeriod { Time = new DateTime(2024, 1, 1), FedKwh = 0, FedWithRceKwh = 0, ValueRce = 0, FedWithRcemKwh = 0, ValueRcem = 0 },
+                ]
+            };
+
+            var lines = CsvExporter.BuildCsv(CalculateMonthly(), netBilling)
+                .Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries);
+
+            Assert.That(lines[1], Does.EndWith(";0,00;0;0,00;0"));
         }
 
         [Test]

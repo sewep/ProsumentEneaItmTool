@@ -96,7 +96,9 @@ namespace ProsumentEneaItmTool.Model.Export
                 {
                     if (netBillingPeriods.Remove(period.Time, out var nb))
                     {
-                        row.AddRange([FormatMoney(nb.ValueRce), Format(nb.FedWithoutRceKwh), FormatMoney(nb.ValueRcem), Format(nb.FedWithoutRcemKwh)]);
+                        row.AddRange([
+                            FormatValue(nb.ValueRce, nb.FedKwh, nb.FedWithRceKwh), Format(nb.FedWithoutRceKwh),
+                            FormatValue(nb.ValueRcem, nb.FedKwh, nb.FedWithRcemKwh), Format(nb.FedWithoutRcemKwh)]);
                     }
                     else
                     {
@@ -109,6 +111,12 @@ namespace ProsumentEneaItmTool.Model.Export
 
             return csv.ToString();
         }
+
+        /// <summary>
+        /// Empty when energy was fed but none of it has a price, so missing price is not shown as zero value.
+        /// </summary>
+        private static string FormatValue(double value, double fedKwh, double fedWithPriceKwh) =>
+            fedKwh > 0 && fedWithPriceKwh <= 0 ? "" : FormatMoney(value);
 
         private static string FormatMoney(double value) => Math.Round(value, 2, MidpointRounding.AwayFromZero).ToString("0.00", _culture);
 
