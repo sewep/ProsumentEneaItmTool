@@ -3,8 +3,8 @@
     internal interface IFileEneaCsvLoader
     {
         /// <summary>
-        /// Asks the user for a file and parses it. Returns null when the user cancels.
+        /// Reads and parses the given Enea report files. Problems are returned as warnings.
         /// </summary>
-        ParseResult? Load();
+        ParseResult Load(IReadOnlyCollection<string> filePaths);
     }
 }

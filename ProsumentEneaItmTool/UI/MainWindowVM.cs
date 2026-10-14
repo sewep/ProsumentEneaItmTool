@@ -3,6 +3,7 @@ using CommunityToolkit.Mvvm.Input;
 using ProsumentEneaItmTool.Domain;
 using ProsumentEneaItmTool.Model.Calculations;
 using ProsumentEneaItmTool.Model.DataBase;
+using ProsumentEneaItmTool.Model.Export;
 using ProsumentEneaItmTool.Model.ImportSource;
 using ProsumentEneaItmTool.UI.CustomControls;
 using ProsumentEneaItmTool.UI.Utils;
@@ -18,6 +19,7 @@ namespace ProsumentEneaItmTool.UI
         private readonly IEnergyDataUpdater _energyDataUpdater;
         private readonly IPowerCalculation _powerCalculation;
         private readonly IUserDialogs _userDialogs;
+        private readonly ICsvExporter _csvExporter;
 
         // Database operations run one at a time, so an import is finished before the data is reloaded.
         private readonly SemaphoreSlim _dataBaseLock = new(1, 1);
@@ -32,18 +34,22 @@ namespace ProsumentEneaItmTool.UI
                             IEnergyDataExtractor energyDataExtractor,
                             IEnergyDataUpdater energyDataUpdater,
                             IPowerCalculation powerCalculation,
-                            IUserDialogs userDialogs)
+                            IUserDialogs userDialogs,
+                            ICsvExporter csvExporter)
         {
             _fileEneaCsvLoader = fileEneaCsvLoader;
             _energyDataExtractor = energyDataExtractor;
             _energyDataUpdater = energyDataUpdater;
             _powerCalculation = powerCalculation;
             _userDialogs = userDialogs;
+            _csvExporter = csvExporter;
 
             // A year of hourly data is easier to read and faster to draw by days.
             _powerCalculation.Aggregation = Aggregation.Day;
 
             LoadFromFileCommand = new AsyncRelayCommand(LoadFromFileAsync, () => !IsBusy);
+            ImportFilesCommand = new AsyncRelayCommand<string[]?>(ImportFilesAsync, _ => !IsBusy);
+            ExportToCsvCommand = new RelayCommand(ExportToCsv, () => !IsBusy);
             ClearAllDataCommand = new AsyncRelayCommand(ClearAllDataAsync, () => !IsBusy);
             SetLastYearCommand = new AsyncRelayCommand(() => RunAsync(SetLastYearAsync), () => !IsBusy);
             SetEntireEnteredTimePeriodCommand = new AsyncRelayCommand(() => RunAsync(SelectFullDateRangesAsync), () => !IsBusy);
@@ -153,29 +159,32 @@ namespace ProsumentEneaItmTool.UI
 
         public IAsyncRelayCommand LoadFromFileCommand { get; }
 
+        /// <summary>
+        /// Imports the given files, used for files dropped on the window.
+        /// </summary>
+        public IAsyncRelayCommand<string[]?> ImportFilesCommand { get; }
+
+        public IRelayCommand ExportToCsvCommand { get; }
+
         public IAsyncRelayCommand ClearAllDataCommand { get; }
 
         public IAsyncRelayCommand SetLastYearCommand { get; }
 
         public IAsyncRelayCommand SetEntireEnteredTimePeriodCommand { get; }
 
-        private async Task LoadFromFileAsync()
+        private Task LoadFromFileAsync()
         {
-            ParseResult? parseResult;
-            try
+            return ImportFilesAsync(_userDialogs.AskForCsvFilesToOpen());
+        }
+
+        private async Task ImportFilesAsync(string[]? filePaths)
+        {
+            if (filePaths is null || filePaths.Length == 0)
             {
-                parseResult = _fileEneaCsvLoader.Load();
-            }
-            catch (Exception e)
-            {
-                _userDialogs.ShowError($"Nie udało się wczytać pliku.\r\n\r\n{e.Message}");
                 return;
             }
 
-            if (parseResult is null)
-            {
-                return;
-            }
+            var parseResult = _fileEneaCsvLoader.Load(filePaths);
 
             if (parseResult.Warnings.Count > 0)
             {
@@ -192,6 +201,38 @@ namespace ProsumentEneaItmTool.UI
                 await RunDataBaseAsync(() => _energyDataUpdater.AddOrUpdateDataAsync(parseResult.Records.ToList()));
                 await SelectFullDateRangesAsync();
             });
+        }
+
+        private void ExportToCsv()
+        {
+            if (_records.Count == 0)
+            {
+                _userDialogs.ShowInformation("Brak danych w wybranym okresie.");
+                return;
+            }
+
+            var aggregationName = Aggregation switch
+            {
+                Aggregation.Day => "dni",
+                Aggregation.Month => "miesiace",
+                _ => "godziny"
+            };
+            var defaultFileName = $"Prosument_{DateFrom:yyyy-MM-dd}_{DateTo:yyyy-MM-dd}_{aggregationName}.csv";
+
+            var filePath = _userDialogs.AskForCsvFileToSave(defaultFileName);
+            if (filePath is null)
+            {
+                return;
+            }
+
+            try
+            {
+                _csvExporter.Export(filePath, _powerCalculation);
+            }
+            catch (Exception e)
+            {
+                _userDialogs.ShowError($"Nie udało się zapisać pliku.\r\n\r\n{e.Message}");
+            }
         }
 
         private async Task ClearAllDataAsync()
@@ -312,6 +353,8 @@ namespace ProsumentEneaItmTool.UI
             OnPropertyChanged(nameof(IsBusy));
 
             LoadFromFileCommand?.NotifyCanExecuteChanged();
+            ImportFilesCommand?.NotifyCanExecuteChanged();
+            ExportToCsvCommand?.NotifyCanExecuteChanged();
             ClearAllDataCommand?.NotifyCanExecuteChanged();
             SetLastYearCommand?.NotifyCanExecuteChanged();
             SetEntireEnteredTimePeriodCommand?.NotifyCanExecuteChanged();

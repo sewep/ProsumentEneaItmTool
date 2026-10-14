@@ -9,15 +9,16 @@
         d:DataContext="{d:DesignInstance Type=local:MainWindowVM}"
         mc:Ignorable="d"
         Title="Prosument Enea Itm Tool"
-        Height="450" Width="800">
+        Height="620" Width="1000"
+        AllowDrop="True" DragOver="Window_DragOver" Drop="Window_Drop">
     <Window.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVis"/>
     </Window.Resources>
     <DockPanel>
         <ScrollViewer DockPanel.Dock="Right" VerticalScrollBarVisibility="Auto" Margin="0,0,5,0">
             <StackPanel x:Name="RootStackPanel">
-                <Button Content="Importuj z pliku CSV" Command="{Binding LoadFromFileCommand}" Margin="0,4"/>
-                <TextBlock Text="Importowane dane zostaną dołączone do już istniejących lub zostaną zaktualizowane."
+                <Button Content="Importuj pliki CSV" Command="{Binding LoadFromFileCommand}" Margin="0,4"/>
+                <TextBlock Text="Można wybrać kilka plików albo przeciągnąć je na okno. Dane zostaną dołączone do już istniejących lub zostaną zaktualizowane."
                            TextWrapping="Wrap"
                            HorizontalAlignment="Stretch"
                            FontSize="9"
@@ -134,6 +135,8 @@
                     <Label Grid.Column="2" Grid.Row="4" Content="{Binding CalculationEnergyResults.FreeToUseAfterBalancing, FallbackValue=000}" Style="{StaticResource DigitalValue}" Foreground="Purple"/>
                 </Grid>
 
+                <Button Content="Eksportuj do CSV" Command="{Binding ExportToCsvCommand}" Margin="0,10,0,0"
+                        ToolTip="Zapisuje wartości z wybranego zakresu, w wybranym okresie (godziny, dni, miesiące)"/>
                 <Button Content="Usuń wszystkie dane" Command="{Binding ClearAllDataCommand}" Margin="0,15,0,0"/>
             </StackPanel>
         </ScrollViewer>
