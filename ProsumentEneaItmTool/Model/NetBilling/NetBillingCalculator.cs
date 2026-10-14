@@ -68,7 +68,7 @@ namespace ProsumentEneaItmTool.Model.NetBilling
 
     /// <summary>
     /// Values the energy fed to the grid by hourly RCE and by monthly RCEm prices.
-    /// The value goes to the prosumer deposit: price x energy x coefficient, negative prices count as zero.
+    /// The value goes to the prosumer deposit: price x energy x coefficient (from 2025-02-01), negative prices count as zero.
     /// </summary>
     public static class NetBillingCalculator
     {
@@ -77,13 +77,21 @@ namespace ProsumentEneaItmTool.Model.NetBilling
         /// </summary>
         public const double DefaultDepositCoefficient = 1.23;
 
+        /// <summary>
+        /// The coefficient applies to energy fed from this day; earlier energy is valued without it.
+        /// </summary>
+        public static readonly DateTime DepositCoefficientFrom = new(2025, 2, 1);
+
         public static NetBillingResult Calculate(
             IReadOnlyList<ImportFileRecord> records,
             IReadOnlyDictionary<DateTime, double> rceByHour,
             IReadOnlyDictionary<DateTime, double> rcemByMonth,
             Aggregation aggregation,
-            double depositCoefficient)
+            double depositCoefficient,
+            DateTime? depositCoefficientFrom = null)
         {
+            var coefficientFrom = depositCoefficientFrom ?? DepositCoefficientFrom;
+
             var periods = new SortedDictionary<DateTime, NetBillingPeriod>();
             var weightedPriceSums = new Dictionary<DateTime, double>();
             var total = new NetBillingPeriod { Time = records.Count > 0 ? records.Min(x => x.Date) : default };
@@ -96,6 +104,8 @@ namespace ProsumentEneaItmTool.Model.NetBilling
                 // Enea marks the hour 13:00-14:00 as 13:59, prices are stored by the start of the hour.
                 var hour = new DateTime(record.Date.Year, record.Date.Month, record.Date.Day, record.Date.Hour, 0, 0);
                 var month = new DateTime(hour.Year, hour.Month, 1);
+
+                var coefficient = hour >= coefficientFrom ? depositCoefficient : 1.0;
 
                 double? rce = rceByHour.TryGetValue(hour, out var rcePrice) ? Math.Max(0, rcePrice) : null;
                 double? rcem = rcemByMonth.TryGetValue(month, out var rcemPrice) ? Math.Max(0, rcemPrice) : null;
@@ -114,20 +124,20 @@ namespace ProsumentEneaItmTool.Model.NetBilling
                     if (rce is double r)
                     {
                         target.FedWithRceKwh += fedKwh;
-                        target.ValueRce += Value(fedKwh, r, depositCoefficient);
+                        target.ValueRce += Value(fedKwh, r, coefficient);
                     }
 
                     if (rcem is double m)
                     {
                         target.FedWithRcemKwh += fedKwh;
-                        target.ValueRcem += Value(fedKwh, m, depositCoefficient);
+                        target.ValueRcem += Value(fedKwh, m, coefficient);
                     }
 
                     if (rce is double rb && rcem is double mb)
                     {
                         target.FedWithBothKwh += fedKwh;
-                        target.ValueRceOfBoth += Value(fedKwh, rb, depositCoefficient);
-                        target.ValueRcemOfBoth += Value(fedKwh, mb, depositCoefficient);
+                        target.ValueRceOfBoth += Value(fedKwh, rb, coefficient);
+                        target.ValueRcemOfBoth += Value(fedKwh, mb, coefficient);
                     }
                 }
 

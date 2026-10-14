@@ -32,6 +32,34 @@ namespace ProsumentEneaItmTool.Tests.Model.NetBilling
         }
 
         [Test]
+        public void Calculate_CoefficientAppliesFromFebruary2025()
+        {
+            var records = new[] { Fed(new DateTime(2025, 1, 31, 23, 59, 0), 1), Fed(new DateTime(2025, 2, 1, 0, 59, 0), 1) };
+            var rce = new Dictionary<DateTime, double>
+            {
+                [new DateTime(2025, 1, 31, 23, 0, 0)] = 1000,
+                [new DateTime(2025, 2, 1, 0, 0, 0)] = 1000,
+            };
+            var rcem = new Dictionary<DateTime, double>
+            {
+                [new DateTime(2025, 1, 1)] = 500,
+                [new DateTime(2025, 2, 1)] = 500,
+            };
+
+            var result = NetBillingCalculator.Calculate(records, rce, rcem, Aggregation.Month, 1.23);
+
+            Assert.Multiple(() =>
+            {
+                // January without the coefficient, February with it.
+                Assert.That(result.Periods[0].ValueRce, Is.EqualTo(1.0).Within(1e-9));
+                Assert.That(result.Periods[1].ValueRce, Is.EqualTo(1.23).Within(1e-9));
+                Assert.That(result.Periods[0].ValueRcem, Is.EqualTo(0.5).Within(1e-9));
+                Assert.That(result.Periods[1].ValueRcem, Is.EqualTo(0.615).Within(1e-9));
+                Assert.That(result.Total.ValueRce, Is.EqualTo(2.23).Within(1e-9));
+            });
+        }
+
+        [Test]
         public void Calculate_NegativePricesCountAsZero()
         {
             var records = new[] { Fed(new DateTime(2025, 5, 1, 13, 59, 0), 4) };

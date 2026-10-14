@@ -18,10 +18,10 @@
         <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,5">
             <Button Content="Pobierz ceny RCE z PSE" Command="{Binding DownloadRcePricesCommand}" Padding="8,2"
                     ToolTip="Pobiera godzinowe ceny RCE dla wybranego zakresu dat (tylko brakujące dni) z api.raporty.pse.pl"/>
-            <Label Content="Współczynnik depozytu" Margin="15,0,0,0"/>
+            <Label Content="Współczynnik depozytu od 01.02.2025" Margin="15,0,0,0"/>
             <TextBox Width="50" VerticalContentAlignment="Center" HorizontalContentAlignment="Center"
                      Text="{Binding DepositCoefficient, StringFormat={}{0:F02}, UpdateSourceTrigger=PropertyChanged, ValidatesOnExceptions=True}"
-                     ToolTip="Wartość energii oddanej zwiększana przy naliczaniu depozytu prosumenckiego (od zmiany ustawy o OZE: 1,23)"/>
+                     ToolTip="Wartość energii oddanej od 1.02.2025 jest zwiększana tym współczynnikiem przy naliczaniu depozytu prosumenckiego (ustawa o OZE: 1,23). Energia oddana wcześniej jest liczona bez współczynnika."/>
         </StackPanel>
 
         <TextBlock DockPanel.Dock="Top" Text="{Binding Status}" Margin="2,0,0,5" Foreground="Gray" TextWrapping="Wrap"/>
@@ -56,7 +56,7 @@
         </Grid>
 
         <TextBlock DockPanel.Dock="Bottom" TextWrapping="Wrap" FontSize="10" Foreground="Gray" Margin="0,5,0,0"
-                   Text="Szacunek wartości energii oddanej do sieci (po bilansowaniu godzinowym), która trafia do depozytu prosumenckiego: energia × cena × współczynnik, ceny ujemne liczone jako zero. Ceny RCE z PSE są dostępne od 14.06.2024. Ceny RCEm wpisz w tabeli z publikacji PSE. Depozyt pokrywa tylko opłaty za energię (nie dystrybucję) i jest ważny 12 miesięcy; szczegóły rozliczenia zależą od umowy ze sprzedawcą."/>
+                   Text="Szacunek wartości energii oddanej do sieci (po bilansowaniu godzinowym), która trafia do depozytu prosumenckiego: energia × cena × współczynnik (od 1.02.2025; wcześniej bez współczynnika), ceny ujemne liczone jako zero. Ceny RCE z PSE są dostępne od 14.06.2024. Ceny RCEm wpisz w tabeli z publikacji PSE. Depozyt pokrywa tylko opłaty za energię (nie dystrybucję) i jest ważny 12 miesięcy; szczegóły rozliczenia zależą od umowy ze sprzedawcą."/>
 
         <Grid>
             <Grid.RowDefinitions>
