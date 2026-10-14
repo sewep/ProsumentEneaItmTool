@@ -15,7 +15,7 @@ namespace ProsumentEneaItmTool.Migrations
         protected override void BuildModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
-            modelBuilder.HasAnnotation("ProductVersion", "8.0.7");
+            modelBuilder.HasAnnotation("ProductVersion", "10.0.13");
 
             modelBuilder.Entity("ProsumentEneaItmTool.Domain.ImportFileRecord", b =>
                 {
@@ -43,6 +43,32 @@ namespace ProsumentEneaItmTool.Migrations
                     b.HasIndex(new[] { "Date" }, "IDX_DateRecord");
 
                     b.ToTable("ImportedRecords");
+                });
+
+            modelBuilder.Entity("ProsumentEneaItmTool.Domain.RcePrice", b =>
+                {
+                    b.Property<DateTime>("Hour")
+                        .HasColumnType("TEXT");
+
+                    b.Property<double>("PricePlnMwh")
+                        .HasColumnType("REAL");
+
+                    b.HasKey("Hour");
+
+                    b.ToTable("RcePrices");
+                });
+
+            modelBuilder.Entity("ProsumentEneaItmTool.Domain.RcemPrice", b =>
+                {
+                    b.Property<DateTime>("Month")
+                        .HasColumnType("TEXT");
+
+                    b.Property<double>("PricePlnMwh")
+                        .HasColumnType("REAL");
+
+                    b.HasKey("Month");
+
+                    b.ToTable("RcemPrices");
                 });
 #pragma warning restore 612, 618
         }

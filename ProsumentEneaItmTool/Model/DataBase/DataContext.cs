@@ -11,6 +11,10 @@ namespace ProsumentEneaItmTool.Model.DataBase
         }
 
         public DbSet<ImportFileRecord> ImportedRecords => Set<ImportFileRecord>();
+
+        public DbSet<RcePrice> RcePrices => Set<RcePrice>();
+
+        public DbSet<RcemPrice> RcemPrices => Set<RcemPrice>();
     }
 
     /// <summary>
