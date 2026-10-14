@@ -4,11 +4,17 @@ on:
   push:
     branches:
       - main
+  pull_request:
   workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
   build:
     runs-on: windows-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
 
     steps:
       - name: Checkout repository
@@ -18,6 +24,13 @@ jobs:
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 8.0.x
+
+      - name: Read version from Directory.Build.props
+        id: version
+        shell: pwsh
+        run: |
+          $version = ([xml](Get-Content Directory.Build.props)).Project.PropertyGroup.Version
+          "version=$version" >> $env:GITHUB_OUTPUT
 
       - name: Restore dependencies
         run: dotnet restore
@@ -29,61 +42,67 @@ jobs:
         run: dotnet test ProsumentEneaItmTool.Tests --configuration Release --no-build --verbosity normal
 
       - name: Publish
-        run: dotnet publish "ProsumentEneaItmTool/ProsumentEneaItmTool.csproj" --configuration Release --no-restore --output ./output
+        run: dotnet publish "ProsumentEneaItmTool/ProsumentEneaItmTool.csproj" --configuration Release --no-restore --output ./publish
 
-      - name: Archive output
+      - name: Build installer
+        shell: pwsh
+        run: |
+          choco install innosetup -y --no-progress
+          $iscc = Get-ChildItem "${env:ProgramFiles(x86)}", $env:ProgramFiles -Directory -Filter "Inno Setup*" |
+            ForEach-Object { Join-Path $_.FullName "ISCC.exe" } |
+            Where-Object { Test-Path $_ } |
+            Select-Object -First 1
+          if (-not $iscc) { throw "ISCC.exe not found" }
+          & $iscc "/DMyAppVersion=${{ steps.version.outputs.version }}" SetupBuilder/ProsumentEneaItmToolSetup.iss
+          if ($LASTEXITCODE -ne 0) { throw "ISCC failed with exit code $LASTEXITCODE" }
+
+      - name: Archive application
         uses: actions/upload-artifact@v4
         with:
           name: ProsumentEneaItmTool
-          path: ./output
+          path: ./publish
+
+      - name: Archive installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: ProsumentEneaItmToolSetup
+          path: SetupBuilder/Output/ProsumentEneaItmToolSetup.exe
 
   release:
     runs-on: ubuntu-latest
     needs: build
-    if: github.event_name == 'workflow_dispatch'
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
+    permissions:
+      contents: write
+    env:
+      VERSION: ${{ needs.build.outputs.version }}
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Download artifact
+      - name: Download application
         uses: actions/download-artifact@v4
         with:
           name: ProsumentEneaItmTool
-          path: ./output
+          path: ./publish
 
-      - name: Install xmllint
-        run: sudo apt-get install -y libxml2-utils
+      - name: Download installer
+        uses: actions/download-artifact@v4
+        with:
+          name: ProsumentEneaItmToolSetup
+          path: ./installer
 
-      - name: Extract version from Directory.Build.props
-        id: get_version
+      - name: Prepare release files
         run: |
-          version=$(xmllint --xpath "string(//Project/PropertyGroup/Version)" Directory.Build.props)
-          echo "VERSION=$version" >> $GITHUB_ENV
+          (cd publish && zip -r "../ProsumentEneaItmTool_${VERSION}.zip" .)
+          cp installer/ProsumentEneaItmToolSetup.exe "ProsumentEneaItmToolSetup_${VERSION}.exe"
 
-      - name: Check root directory
-        run: |
-          ls -al .
-
-      - name: Zip the artifact
-        run: |
-          zip -r ProsumentEneaItmTool_${{ env.VERSION }}.zip ./output
-
-      - name: Create Release
-        id: create_release
+      - name: Create release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh release create v${{ env.VERSION }} \
-            --title "Release v${{ env.VERSION }}" \
-            --notes "Automatycznie wygenerowane wydanie" \
-            --draft false \
-            --prerelease false
-
-      - name: Upload Release Asset
-        id: upload_asset
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          gh release upload v${{ env.VERSION }} \
-            ProsumentEneaItmTool_${{ env.VERSION }}.zip
+          gh release create "v${VERSION}" \
+            --repo "${{ github.repository }}" \
+            --target "${{ github.sha }}" \
+            --title "Release v${VERSION}" \
+            --notes "Automatycznie wygenerowane wydanie. Instalator: ProsumentEneaItmToolSetup_${VERSION}.exe, wersja bez instalacji: ProsumentEneaItmTool_${VERSION}.zip (wymaga .NET 8 Desktop Runtime)." \
+            "ProsumentEneaItmTool_${VERSION}.zip" \
+            "ProsumentEneaItmToolSetup_${VERSION}.exe"

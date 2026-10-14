@@ -2,7 +2,10 @@
 ; SEE THE DOCUMENTATION FOR DETAILS ON CREATING INNO SETUP SCRIPT FILES!
 
 #define MyAppName "ProsumentEneaItmTool"
-#define MyAppVersion "1.0.5"
+; Version is passed by CI: ISCC /DMyAppVersion=x.y.z (taken from Directory.Build.props).
+#ifndef MyAppVersion
+  #define MyAppVersion "0.0.0-dev"
+#endif
 #define MyAppPublisher "ITM-Serwis"
 #define MyAppURL "https://itm-serwis.pl"
 #define MyAppExeName "ProsumentEneaItmTool.exe"
@@ -46,63 +49,3 @@ Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: de
 
 [Run]
 Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Flags: nowait postinstall skipifsilent
-
-[Code]
-var
-  InstallTypePage: TWizardPage;
-  InstallRadioButton: TRadioButton;
-  PortableRadioButton: TRadioButton;
-
-procedure InitializeWizard();
-begin
-  // Create a new page in the wizard
-  InstallTypePage := CreateCustomPage(wpWelcome, 'Installation Type', 'Choose the type of installation');
-  
-  // Add radio buttons to the new page
-  InstallRadioButton := TNewRadioButton.Create(WizardForm);
-  InstallRadioButton.Parent := InstallTypePage.Surface;
-  InstallRadioButton.Left := 0;
-  InstallRadioButton.Top := 24;
-  InstallRadioButton.Width := InstallTypePage.SurfaceWidth;
-  InstallRadioButton.Caption := 'Standard Installation';
-  InstallRadioButton.Checked := True;
-
-  PortableRadioButton := TNewRadioButton.Create(WizardForm);
-  PortableRadioButton.Parent := InstallTypePage.Surface;
-  PortableRadioButton.Left := 0;
-  PortableRadioButton.Top := 54;
-  PortableRadioButton.Width := InstallTypePage.SurfaceWidth;
-  PortableRadioButton.Caption := 'Portable Mode';
-end;
-
-function NextButtonClick(CurPageID: Integer): Boolean;
-var
-  ResultCode: Integer;
-begin
-  // If the user selected portable mode, run the app and exit the installer
-  if (CurPageID = InstallTypePage.ID) and PortableRadioButton.Checked then
-  begin
-    ExtractTemporaryFile('{#MyAppExeName}');
-    ExtractTemporaryFile('*.dll');
-    ExtractTemporaryFile('*.json');
-    ShellExec('', ExpandConstant('{tmp}\{#MyAppExeName}'), '', '', SW_SHOWNORMAL, ewNoWait, ResultCode);
-    Result := False;  // Skip the rest of the installation
-  end
-  else
-  begin
-    Result := True;  // Continue with the installation
-  end;
-end;
-
-function ShouldSkipPage(PageID: Integer): Boolean;
-begin
-  // Skip directory selection and components pages if portable mode is selected
-  if (PageID = wpSelectDir) or (PageID = wpSelectComponents) then
-  begin
-    Result := PortableRadioButton.Checked;
-  end
-  else
-  begin
-    Result := False;
-  end;
-end;
