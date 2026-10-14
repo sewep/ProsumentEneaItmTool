@@ -23,7 +23,7 @@ jobs:
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: 8.0.x
+          dotnet-version: 10.0.x
 
       - name: Read version from Directory.Build.props
         id: version
@@ -103,6 +103,6 @@ jobs:
             --repo "${{ github.repository }}" \
             --target "${{ github.sha }}" \
             --title "Release v${VERSION}" \
-            --notes "Automatycznie wygenerowane wydanie. Instalator: ProsumentEneaItmToolSetup_${VERSION}.exe, wersja bez instalacji: ProsumentEneaItmTool_${VERSION}.zip (wymaga .NET 8 Desktop Runtime)." \
+            --notes "Automatycznie wygenerowane wydanie. Instalator: ProsumentEneaItmToolSetup_${VERSION}.exe, wersja bez instalacji: ProsumentEneaItmTool_${VERSION}.zip (wymaga .NET 10 Desktop Runtime)." \
             "ProsumentEneaItmTool_${VERSION}.zip" \
             "ProsumentEneaItmToolSetup_${VERSION}.exe"
